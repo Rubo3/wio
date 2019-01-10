@@ -8,6 +8,7 @@
 #include <wlr/types/wlr_output.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/util/log.h>
+#include "colors.h"
 #include "server.h"
 
 static void output_frame(struct wl_listener *listener, void *data) {
@@ -25,8 +26,7 @@ static void output_frame(struct wl_listener *listener, void *data) {
 	wlr_output_effective_resolution(output->wlr_output, &width, &height);
 	wlr_renderer_begin(renderer, width, height);
 
-	float color[4] = {0.3, 0.3, 0.3, 1.0};
-	wlr_renderer_clear(renderer, color);
+	wlr_renderer_clear(renderer, background);
 	// TODO: other stuff
 	wlr_renderer_end(renderer);
 	wlr_output_swap_buffers(output->wlr_output, NULL, NULL);
