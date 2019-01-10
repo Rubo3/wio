@@ -30,7 +30,8 @@ wio_inc = include_directories('include')
 subdir('protocols')
 
 wio_sources = files(
-	'main.c'
+	'main.c',
+	'output.c',
 )
 
 executable(

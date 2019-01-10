@@ -14,6 +14,7 @@ struct wio_server {
 	struct wl_list outputs;
 
 	struct wl_listener new_output;
+	struct wl_listener new_input;
 };
 
 struct wio_output {
@@ -23,5 +24,7 @@ struct wio_output {
 
 	struct wl_listener frame;
 };
+
+void server_new_output(struct wl_listener *listener, void *data);
 
 #endif
