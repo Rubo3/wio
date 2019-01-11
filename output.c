@@ -46,7 +46,6 @@ void server_new_output(struct wl_listener *listener, void *data) {
 	wl_signal_add(&wlr_output->events.frame, &output->frame);
 	wl_list_insert(&server->outputs, &output->link);
 
-	// TODO
-	//wlr_output_layout_add_auto(server->output_layout, wlr_output);
+	wlr_output_layout_add_auto(server->output_layout, wlr_output);
 	wlr_output_create_global(wlr_output);
 }

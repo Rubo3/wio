@@ -1,0 +1,100 @@
+#include <stdlib.h>
+#include <wlr/types/wlr_cursor.h>
+#include <wlr/types/wlr_seat.h>
+#include <wlr/types/wlr_input_device.h>
+#include <wlr/types/wlr_keyboard.h>
+#include <wlr/types/wlr_pointer.h>
+#include <xkbcommon/xkbcommon.h>
+#include "server.h"
+
+static void server_new_keyboard(
+		struct wio_server *server, struct wlr_input_device *device) {
+	struct wio_keyboard *keyboard = calloc(1, sizeof(struct wio_keyboard));
+	keyboard->server = server;
+	keyboard->device = device;
+
+	struct xkb_rule_names rules = { 0 };
+	struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+	struct xkb_keymap *keymap = xkb_map_new_from_names(context, &rules,
+		XKB_KEYMAP_COMPILE_NO_FLAGS);
+
+	wlr_keyboard_set_keymap(device->keyboard, keymap);
+	xkb_keymap_unref(keymap);
+	xkb_context_unref(context);
+	wlr_keyboard_set_repeat_info(device->keyboard, 25, 600);
+
+	//keyboard->modifiers.notify = keyboard_handle_modifiers;
+	//wl_signal_add(&device->keyboard->events.modifiers, &keyboard->modifiers);
+	//keyboard->key.notify = keyboard_handle_key;
+	//wl_signal_add(&device->keyboard->events.key, &keyboard->key);
+
+	wlr_seat_set_keyboard(server->seat, device);
+	wl_list_insert(&server->keyboards, &keyboard->link);
+}
+
+static void server_new_pointer(
+		struct wio_server *server, struct wlr_input_device *device) {
+	wlr_cursor_attach_input_device(server->cursor, device);
+}
+
+void server_new_input(struct wl_listener *listener, void *data) {
+	struct wio_server *server = wl_container_of(listener, server, new_input);
+	struct wlr_input_device *device = data;
+	switch (device->type) {
+	case WLR_INPUT_DEVICE_KEYBOARD:
+		server_new_keyboard(server, device);
+		break;
+	case WLR_INPUT_DEVICE_POINTER:
+		server_new_pointer(server, device);
+		break;
+	default:
+		break;
+	}
+	uint32_t caps = WL_SEAT_CAPABILITY_POINTER;
+	if (!wl_list_empty(&server->keyboards)) {
+		caps |= WL_SEAT_CAPABILITY_KEYBOARD;
+	}
+	wlr_seat_set_capabilities(server->seat, caps);
+}
+
+static void process_cursor_motion(struct wio_server *server, uint32_t time) {
+	// TODO: Resize/move/passthrough/etc
+	wlr_xcursor_manager_set_cursor_image(
+			server->cursor_mgr, "left_ptr", server->cursor);
+}
+
+void server_cursor_motion(struct wl_listener *listener, void *data) {
+	struct wio_server *server =
+		wl_container_of(listener, server, cursor_motion);
+	struct wlr_event_pointer_motion *event = data;
+	wlr_cursor_move(server->cursor, event->device,
+			event->delta_x, event->delta_y);
+	process_cursor_motion(server, event->time_msec);
+}
+
+void server_cursor_motion_absolute(
+		struct wl_listener *listener, void *data) {
+	struct wio_server *server =
+		wl_container_of(listener, server, cursor_motion_absolute);
+	struct wlr_event_pointer_motion_absolute *event = data;
+	wlr_cursor_warp_absolute(server->cursor, event->device, event->x, event->y);
+	process_cursor_motion(server, event->time_msec);
+}
+
+void server_cursor_button(struct wl_listener *listener, void *data) {
+	struct wio_server *server =
+		wl_container_of(listener, server, cursor_button);
+	struct wlr_event_pointer_button *event = data;
+	// TODO: Internal button processing (e.g. resize, menus, etc)
+	// TODO: Bring client under the cursor to the front when pressed
+	wlr_seat_pointer_notify_button(server->seat,
+			event->time_msec, event->button, event->state);
+}
+
+void server_cursor_axis(struct wl_listener *listener, void *data) {
+	struct wio_server *server = wl_container_of(listener, server, cursor_axis);
+	struct wlr_event_pointer_axis *event = data;
+	wlr_seat_pointer_notify_axis(server->seat,
+			event->time_msec, event->orientation, event->delta,
+			event->delta_discrete, event->source);
+}

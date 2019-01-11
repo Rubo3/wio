@@ -24,6 +24,7 @@ add_project_arguments(
 wlroots = dependency('wlroots', fallback: ['wlroots', 'wlroots'])
 wayland_server = dependency('wayland-server')
 wayland_protos = dependency('wayland-protocols')
+xkbcommon = dependency('xkbcommon')
 
 wio_inc = include_directories('include')
 
@@ -31,6 +32,7 @@ subdir('protocols')
 
 wio_sources = files(
 	'main.c',
+	'input.c',
 	'output.c',
 )
 
@@ -39,9 +41,10 @@ executable(
 	wio_sources,
 	include_directories: [wio_inc],
 	dependencies: [
-		wlroots,
-		wayland_server,
 		server_protos,
+		wayland_server,
+		wlroots,
+		xkbcommon,
 	],
 	install: true
 )
