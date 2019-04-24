@@ -10,9 +10,12 @@ struct wio_view {
 	struct wlr_xdg_surface *xdg_surface;
 	struct wio_server *server;
 	struct wl_list link;
+	struct wl_listener map;
 	struct wl_listener destroy;
 };
 
 void server_new_xdg_surface(struct wl_listener *listener, void *data);
+
+void wio_view_focus(struct wio_view *view, struct wlr_surface *surface);
 
 #endif
