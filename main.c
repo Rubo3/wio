@@ -8,8 +8,10 @@
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_xcursor_manager.h>
+#include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/util/log.h>
 #include "server.h"
+#include "view.h"
 
 int main(int argc, char **argv) {
 	struct wio_server server;
@@ -55,6 +57,12 @@ int main(int argc, char **argv) {
 	//		&server.request_cursor);
 	wl_list_init(&server.keyboards);
 	wl_list_init(&server.pointers);
+
+	wl_list_init(&server.views);
+	server.xdg_shell = wlr_xdg_shell_create(server.wl_display);
+	server.new_xdg_surface.notify = server_new_xdg_surface;
+	wl_signal_add(&server.xdg_shell->events.new_surface,
+			&server.new_xdg_surface);
 
 	const char *socket = wl_display_add_socket_auto(server.wl_display);
 	if (!socket) {

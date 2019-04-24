@@ -34,6 +34,7 @@ wio_sources = files(
 	'main.c',
 	'input.c',
 	'output.c',
+	'view.c',
 )
 
 executable(

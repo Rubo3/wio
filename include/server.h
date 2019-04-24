@@ -10,6 +10,7 @@
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_pointer.h>
 #include <wlr/types/wlr_xcursor_manager.h>
+#include <wlr/types/wlr_xdg_shell.h>
 
 struct wio_server {
 	struct wl_display *wl_display;
@@ -20,11 +21,13 @@ struct wio_server {
 	struct wlr_renderer *renderer;
 	struct wlr_seat *seat;
 	struct wlr_xcursor_manager *cursor_mgr;
+	struct wlr_xdg_shell *xdg_shell;
 
 	struct wl_list outputs;
 	struct wl_list inputs;
 	struct wl_list pointers;
 	struct wl_list keyboards;
+	struct wl_list views;
 
 	struct wl_listener new_output;
 	struct wl_listener new_input;
@@ -32,6 +35,8 @@ struct wio_server {
 	struct wl_listener cursor_motion_absolute;
 	struct wl_listener cursor_button;
 	struct wl_listener cursor_axis;
+
+	struct wl_listener new_xdg_surface;
 };
 
 struct wio_output {
