@@ -37,6 +37,12 @@ struct wio_server {
 	struct wl_listener cursor_axis;
 
 	struct wl_listener new_xdg_surface;
+
+	struct {
+		int x, y;
+		struct wlr_texture *active_textures[5];
+		struct wlr_texture *inactive_textures[5];
+	} menu;
 };
 
 struct wio_output {

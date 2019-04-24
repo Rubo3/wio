@@ -21,6 +21,7 @@ add_project_arguments(
 	language: 'c',
 )
 
+cairo = dependency('cairo')
 wlroots = dependency('wlroots', fallback: ['wlroots', 'wlroots'])
 wayland_server = dependency('wayland-server')
 wayland_protos = dependency('wayland-protocols')
@@ -42,6 +43,7 @@ executable(
 	wio_sources,
 	include_directories: [wio_inc],
 	dependencies: [
+		cairo,
 		server_protos,
 		wayland_server,
 		wlroots,
