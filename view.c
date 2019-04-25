@@ -7,7 +7,18 @@
 
 static void xdg_surface_map(struct wl_listener *listener, void *data) {
 	struct wio_view *view = wl_container_of(listener, view, map);
+	struct wio_server *server = view->server;
 	wio_view_focus(view, view->xdg_surface->surface);
+
+	// TODO: move this view to its preallocated space
+	struct wlr_output *output = wlr_output_layout_output_at(
+			server->output_layout, server->cursor->x, server->cursor->y);
+	struct wlr_output_layout_output *layout = wlr_output_layout_get(
+			server->output_layout, output);
+	view->x = layout->x +
+		(output->width / 2 - view->xdg_surface->surface->current.width / 2);
+	view->y = layout->y +
+		(output->height / 2 - view->xdg_surface->surface->current.height / 2);
 }
 
 static void xdg_surface_destroy(struct wl_listener *listener, void *data) {

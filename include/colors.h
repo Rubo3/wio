@@ -6,7 +6,7 @@ static const float background[4] = {
 };
 
 static const float active_border[4] = {
-	0x59 / 255.0f, 0xAB / 255.0f, 0xAB / 255.0f, 1.0f,
+	0x50 / 255.0f, 0xA1 / 255.0f, 0xAD / 255.0f, 1.0f,
 };
 
 static const float inactive_border[4] = {

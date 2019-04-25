@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200112L
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <wayland-server.h>
 #include <wlr/types/wlr_matrix.h>
@@ -160,6 +161,43 @@ static void output_frame(struct wl_listener *listener, void *data) {
 			.renderer = renderer,
 			.when = &now,
 		};
+		const int border = 5;
+		float color[4];
+		if (view->xdg_surface->toplevel->current.activated) {
+			memcpy(color, active_border, sizeof(color));
+		} else {
+			memcpy(color, inactive_border, sizeof(color));
+		}
+		struct wlr_box borders;
+		// Top
+		borders.x = view->x - border;
+		borders.y = view->y - border;
+		borders.width = view->xdg_surface->surface->current.width + border * 2;
+		borders.height = border;
+		wlr_render_rect(renderer, &borders, color,
+				output->wlr_output->transform_matrix);
+		// Right
+		borders.x = view->x + view->xdg_surface->surface->current.width;
+		borders.y = view->y - border;
+		borders.width = border;
+		borders.height = view->xdg_surface->surface->current.height + border * 2;
+		wlr_render_rect(renderer, &borders, color,
+				output->wlr_output->transform_matrix);
+		// Bottom
+		borders.x = view->x - border;
+		borders.y = view->y + view->xdg_surface->surface->current.height;
+		borders.width = view->xdg_surface->surface->current.width + border * 2;
+		borders.height = border;
+		wlr_render_rect(renderer, &borders, color,
+				output->wlr_output->transform_matrix);
+		// Left
+		borders.x = view->x - border;
+		borders.y = view->y - border;
+		borders.width = border;
+		borders.height = view->xdg_surface->surface->current.height + border * 2;
+		wlr_render_rect(renderer, &borders, color,
+				output->wlr_output->transform_matrix);
+
 		wlr_xdg_surface_for_each_surface(view->xdg_surface,
 				render_surface, &rdata);
 	}
