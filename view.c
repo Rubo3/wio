@@ -15,10 +15,12 @@ static void xdg_surface_map(struct wl_listener *listener, void *data) {
 			server->output_layout, server->cursor->x, server->cursor->y);
 	struct wlr_output_layout_output *layout = wlr_output_layout_get(
 			server->output_layout, output);
-	view->x = layout->x +
-		(output->width / 2 - view->xdg_surface->surface->current.width / 2);
-	view->y = layout->y +
-		(output->height / 2 - view->xdg_surface->surface->current.height / 2);
+	if (view->x == -1 || view->y == -1) {
+		view->x = layout->x +
+			(output->width / 2 - view->xdg_surface->surface->current.width / 2);
+		view->y = layout->y +
+			(output->height / 2 - view->xdg_surface->surface->current.height / 2);
+	}
 }
 
 static void xdg_surface_destroy(struct wl_listener *listener, void *data) {
@@ -38,6 +40,7 @@ void server_new_xdg_surface(struct wl_listener *listener, void *data) {
 	struct wio_view *view = calloc(1, sizeof(struct wio_view));
 	view->server = server;
 	view->xdg_surface = xdg_surface;
+	view->x = view->y = -1;
 
 	view->destroy.notify = xdg_surface_destroy;
 	wl_signal_add(&xdg_surface->events.destroy, &view->destroy);
@@ -46,6 +49,24 @@ void server_new_xdg_surface(struct wl_listener *listener, void *data) {
 
 	wlr_xdg_toplevel_set_tiled(view->xdg_surface,
 		WLR_EDGE_LEFT | WLR_EDGE_RIGHT | WLR_EDGE_TOP | WLR_EDGE_BOTTOM);
+
+	pid_t pid;
+	uid_t uid;
+	gid_t gid;
+	struct wl_client *client = wl_resource_get_client(xdg_surface->resource);
+	wl_client_get_credentials(client, &pid, &uid, &gid);
+	struct wio_new_view *new_view;
+	wl_list_for_each(new_view, &server->new_views, link) {
+		if (new_view->pid != pid) {
+			continue;
+		}
+		view->x = new_view->box.x;
+		view->y = new_view->box.y;
+		wlr_xdg_toplevel_set_size(xdg_surface,
+				new_view->box.width, new_view->box.height);
+		wl_list_remove(&new_view->link);
+		break;
+	}
 
 	wl_list_insert(&server->views, &view->link);
 }

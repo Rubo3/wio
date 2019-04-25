@@ -1,11 +1,16 @@
+#define _POSIX_C_SOURCE 200811L
+#include <signal.h>
 #include <stdlib.h>
+#include <sys/wait.h>
 #include <linux/input-event-codes.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_input_device.h>
 #include <wlr/types/wlr_keyboard.h>
 #include <wlr/types/wlr_pointer.h>
+#include <wlr/util/log.h>
 #include <xkbcommon/xkbcommon.h>
+#include <unistd.h>
 #include "server.h"
 #include "view.h"
 
@@ -100,10 +105,12 @@ static void process_cursor_motion(struct wio_server *server, uint32_t time) {
 					"grabbing", server->cursor);
 			break;
 		case INPUT_STATE_RESIZE_START:
+		case INPUT_STATE_NEW_START:
 			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
 					"top_left_corner", server->cursor);
 			break;
 		case INPUT_STATE_RESIZE_END:
+		case INPUT_STATE_NEW_END:
 			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
 					"bottom_right_corner", server->cursor);
 			break;
@@ -146,6 +153,11 @@ static void menu_handle_button(
 		struct wio_server *server, struct wlr_event_pointer_button *event) {
 	server->menu.x = server->menu.y = -1;
 	switch (server->menu.selected) {
+	case 0:
+		server->input_state = INPUT_STATE_NEW_START;
+		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+				"top_left_corner", server->cursor);
+		break;
 	case 1:
 		server->input_state = INPUT_STATE_RESIZE_SELECT;
 		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
@@ -182,12 +194,74 @@ static void view_begin_interactive(struct wio_view *view,
 static void view_end_interactive(struct wio_server *server) {
 	server->input_state = INPUT_STATE_NONE;
 	server->interactive.view = NULL;
-	if (server->interactive.cursor) {
-		wlr_cursor_set_surface(server->cursor, server->interactive.cursor,
-				server->interactive.hotspot_x, server->interactive.hotspot_y);
-	} else {
-		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
-				"left_ptr", server->cursor);
+	// TODO: Restore previous pointer?
+	wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+			"left_ptr", server->cursor);
+}
+
+static void new_view(struct wio_server *server) {
+	int x1 = server->interactive.sx, x2 = server->cursor->x;
+	int y1 = server->interactive.sy, y2 = server->cursor->y;
+	if (x2 < x1) {
+		int _ = x1;
+		x1 = x2;
+		x2 = _;
+	}
+	if (y2 < y1) {
+		int _ = y1;
+		y1 = y2;
+		y2 = _;
+	}
+	struct wio_new_view *view = calloc(1, sizeof(struct wio_new_view));
+	view->box.x = x1 + window_border;
+	view->box.y = y1 + window_border;
+	view->box.width = x2 - x1;
+	view->box.height = y2 - y1;
+	int fd[2];
+	if (pipe(fd) != 0) {
+		wlr_log(WLR_ERROR, "Unable to create pipe for fork");
+		return;
+	}
+	char cmd[1024];
+	if (snprintf(cmd, sizeof(cmd), "%s -- %s",
+			server->cage, server->term) >= (int)sizeof(cmd)) {
+		fprintf(stderr, "New view command truncated\n");
+		return;
+	}
+	pid_t pid, child;
+	if ((pid = fork()) == 0) {
+		setsid();
+		sigset_t set;
+		sigemptyset(&set);
+		sigprocmask(SIG_SETMASK, &set, NULL);
+		close(fd[0]);
+		if ((child = fork()) == 0) {
+			close(fd[1]);
+			execl("/bin/sh", "/bin/sh", "-c", cmd, (void *)NULL);
+			_exit(0);
+		}
+		ssize_t s = 0;
+		while ((size_t)s < sizeof(pid_t)) {
+			s += write(fd[1], ((uint8_t *)&child) + s, sizeof(pid_t) - s);
+		}
+		close(fd[1]);
+		_exit(0); // Close child process
+	} else if (pid < 0) {
+		close(fd[0]);
+		close(fd[1]);
+		wlr_log(WLR_ERROR, "fork failed");
+		return;
+	}
+	close(fd[1]); // close write
+	ssize_t s = 0;
+	while ((size_t)s < sizeof(pid_t)) {
+		s += read(fd[0], ((uint8_t *)&child) + s, sizeof(pid_t) - s);
+	}
+	close(fd[0]);
+	waitpid(pid, NULL, 0);
+	if (child > 0) {
+		view->pid = child;
+		wl_list_insert(&server->new_views, &view->link);
 	}
 }
 
@@ -219,6 +293,17 @@ static void handle_button_internal(
 				server->menu.x = server->menu.y = -1;
 			}
 		}
+		break;
+	case INPUT_STATE_NEW_START:
+		if (event->state == WLR_BUTTON_PRESSED) {
+			server->interactive.sx = server->cursor->x;
+			server->interactive.sy = server->cursor->y;
+			server->input_state = INPUT_STATE_NEW_END;
+		}
+		break;
+	case INPUT_STATE_NEW_END:
+		new_view(server);
+		view_end_interactive(server);
 		break;
 	case INPUT_STATE_RESIZE_SELECT:
 		if (event->state == WLR_BUTTON_PRESSED) {
@@ -349,8 +434,5 @@ void seat_request_cursor(struct wl_listener *listener, void *data) {
 			&& server->input_state == INPUT_STATE_NONE) {
 		wlr_cursor_set_surface(server->cursor, event->surface,
 				event->hotspot_x, event->hotspot_y);
-		server->interactive.cursor = event->surface;
-		server->interactive.hotspot_x = event->hotspot_x;
-		server->interactive.hotspot_y = event->hotspot_y;
 	}
 }

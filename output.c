@@ -69,8 +69,8 @@ static void render_menu(struct wio_output *output) {
 	text_height += border * 2 - margin;
 
 	double ox = 0, oy = 0;
-	//wlr_output_layout_output_coords(
-	//		view->server->output_layout, output->wlr_output, &ox, &oy);
+	wlr_output_layout_output_coords(
+			server->output_layout, output->wlr_output, &ox, &oy);
 	ox += server->menu.x, oy += server->menu.y;
 	int scale = output->wlr_output->scale;
 
@@ -98,6 +98,7 @@ static void render_menu(struct wio_output *output) {
 	wlr_render_rect(renderer, &bg_box, menu_border,
 			output->wlr_output->transform_matrix);
 
+	server->menu.selected = -1;
 	ox += margin;
 	oy += margin;
 	for (size_t i = 0; i < ntextures; ++i) {
@@ -137,7 +138,7 @@ static void render_view_border(struct wlr_renderer *renderer,
 		struct wio_output *output, struct wio_view *view,
 		int x, int y, int width, int height) {
 	float color[4];
-	if (view->xdg_surface->toplevel->current.activated) {
+	if (!view || view->xdg_surface->toplevel->current.activated) {
 		memcpy(color, active_border, sizeof(color));
 	} else {
 		memcpy(color, inactive_border, sizeof(color));
@@ -208,25 +209,25 @@ static void output_frame(struct wl_listener *listener, void *data) {
 				view->xdg_surface->surface->current.height);
 		wlr_xdg_surface_for_each_surface(view->xdg_surface,
 				render_surface, &rdata);
-		if (server->interactive.view == view) {
-			switch (server->input_state) {
-			case INPUT_STATE_MOVE:
-				render_view_border(renderer, output, view,
-					server->cursor->x - server->interactive.sx,
-					server->cursor->y - server->interactive.sy,
-					view->xdg_surface->surface->current.width,
-					view->xdg_surface->surface->current.height);
-				break;
-			case INPUT_STATE_RESIZE_END:
-				render_view_border(renderer, output, view,
-					server->interactive.sx, server->interactive.sy,
-					server->cursor->x - server->interactive.sx,
-					server->cursor->y - server->interactive.sy);
-				break;
-			default:
-				break;
-			}
-		}
+	}
+	switch (server->input_state) {
+	case INPUT_STATE_MOVE:;
+		struct wio_view *view = server->interactive.view;
+		render_view_border(renderer, output, view,
+			server->cursor->x - server->interactive.sx,
+			server->cursor->y - server->interactive.sy,
+			view->xdg_surface->surface->current.width,
+			view->xdg_surface->surface->current.height);
+		break;
+	case INPUT_STATE_NEW_END:
+	case INPUT_STATE_RESIZE_END:
+		render_view_border(renderer, output, NULL,
+			server->interactive.sx, server->interactive.sy,
+			server->cursor->x - server->interactive.sx,
+			server->cursor->y - server->interactive.sy);
+		break;
+	default:
+		break;
 	}
 
 	if (server->menu.x != -1 && server->menu.y != -1) {

@@ -1,8 +1,10 @@
 #ifndef _WIO_SERVER_H
 #define _WIO_SERVER_H
+#include <signal.h>
 #include <wayland-server.h>
 #include <wlr/backend.h>
 #include <wlr/render/wlr_renderer.h>
+#include <wlr/types/wlr_box.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_keyboard.h>
@@ -31,6 +33,8 @@ enum wio_input_state {
 struct wio_server {
 	struct wl_display *wl_display;
 
+	const char *cage, *term;
+
 	struct wlr_backend *backend;
 	struct wlr_cursor *cursor;
 	struct wlr_output_layout *output_layout;
@@ -44,6 +48,7 @@ struct wio_server {
 	struct wl_list pointers;
 	struct wl_list keyboards;
 	struct wl_list views;
+	struct wl_list new_views;
 
 	struct wl_listener new_output;
 	struct wl_listener new_input;
@@ -67,8 +72,6 @@ struct wio_server {
 	struct {
 		int sx, sy;
 		struct wio_view *view;
-		struct wlr_surface *cursor;
-		int hotspot_x, hotspot_y;
 	} interactive;
 
 	enum wio_input_state input_state;
@@ -91,6 +94,12 @@ struct wio_keyboard {
 
 	struct wl_listener modifiers;
 	struct wl_listener key;
+};
+
+struct wio_new_view {
+	pid_t pid;
+	struct wlr_box box;
+	struct wl_list link;
 };
 
 void server_new_output(struct wl_listener *listener, void *data);

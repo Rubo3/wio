@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200112L
 #include <cairo/cairo.h>
+#include <getopt.h>
 #include <stdlib.h>
 #include <time.h>
 #include <wayland-server.h>
@@ -73,8 +74,28 @@ static void gen_menu_textures(struct wio_server *server) {
 
 int main(int argc, char **argv) {
 	struct wio_server server = { 0 };
-
+	server.cage = "cage -d";
+	server.term = "alacritty";
 	wlr_log_init(WLR_DEBUG, NULL);
+
+	int c;
+	while ((c = getopt(argc, argv, "c:t:h")) != -1) {
+		switch (c) {
+		case 'c':
+			server.cage = optarg;
+			break;
+		case 't':
+			server.term = optarg;
+			break;
+		case 'h':
+			printf("Usage: %s [-t terminal command] [-c cage command]\n",
+					argv[0]);
+			break;
+		default:
+			fprintf(stderr, "Unrecognized option %c\n", c);
+			return 1;
+		}
+	}
 
 	server.wl_display = wl_display_create();
 	server.backend = wlr_backend_autocreate(server.wl_display, NULL);
@@ -133,6 +154,8 @@ int main(int argc, char **argv) {
 	server.new_xdg_surface.notify = server_new_xdg_surface;
 	wl_signal_add(&server.xdg_shell->events.new_surface,
 			&server.new_xdg_surface);
+
+	wl_list_init(&server.new_views);
 
 	server.menu.x = server.menu.y = -1;
 	gen_menu_textures(&server);
