@@ -341,8 +341,8 @@ static void handle_button_internal(
 			y1 = y2;
 			y2 = _;
 		}
-		server->interactive.view->x = x1 + window_border;
-		server->interactive.view->y = y1 + window_border;
+		wio_view_move(server->interactive.view,
+				x1 + window_border, y1 + window_border);
 		uint32_t width = x2 - x1, height = y2 - y1;
 		if (width < 100) {
 			width = 100;
@@ -369,10 +369,9 @@ static void handle_button_internal(
 		}
 		break;
 	case INPUT_STATE_MOVE:
-		server->interactive.view->x =
-			server->cursor->x - server->interactive.sx;
-		server->interactive.view->y =
-			server->cursor->y - server->interactive.sy;
+		wio_view_move(server->interactive.view,
+			server->cursor->x - server->interactive.sx,
+			server->cursor->y - server->interactive.sy);
 		view_end_interactive(server);
 		break;
 	case INPUT_STATE_DELETE_SELECT:

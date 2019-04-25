@@ -15,10 +15,14 @@ static void xdg_surface_map(struct wl_listener *listener, void *data) {
 	struct wlr_output_layout_output *layout = wlr_output_layout_get(
 			server->output_layout, output);
 	if (view->x == -1 || view->y == -1) {
-		view->x = layout->x +
-			(output->width / 2 - view->xdg_surface->surface->current.width / 2);
-		view->y = layout->y +
-			(output->height / 2 - view->xdg_surface->surface->current.height / 2);
+		struct wlr_surface_state *current =
+			&view->xdg_surface->surface->current;
+		wio_view_move(view,
+				layout->x + (output->width / 2 - current->width / 2),
+				layout->y + (output->height / 2 - current->height / 2));
+	} else {
+		// Sends wl_surface_enter
+		wio_view_move(view, view->x, view->y);
 	}
 }
 
@@ -125,4 +129,15 @@ struct wio_view *wio_view_at(struct wio_server *server, double lx, double ly,
 		}
 	}
 	return NULL;
+}
+
+void wio_view_move(struct wio_view *view, int x, int y) {
+	view->x = x;
+	view->y = y;
+
+	// Cheating as FUCK because I'm lazy
+	struct wio_output *output;
+	wl_list_for_each(output, &view->server->outputs, link) {
+		wlr_surface_send_enter(view->xdg_surface->surface, output->wlr_output);
+	}
 }

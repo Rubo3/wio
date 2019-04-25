@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200112L
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <time.h>
 #include <wayland-server.h>
 #include <wlr/types/wlr_matrix.h>
@@ -45,6 +46,17 @@ static void render_surface(struct wlr_surface *surface,
 	wlr_surface_send_frame_done(surface, rdata->when);
 }
 
+static int scale_length(int length, int offset, float scale) {
+	return round((offset + length) * scale) - round(offset * scale);
+}
+
+void scale_box(struct wlr_box *box, float scale) {
+	box->width = scale_length(box->width, box->x, scale);
+	box->height = scale_length(box->height, box->y, scale);
+	box->x = round(box->x * scale);
+	box->y = round(box->y * scale);
+}
+
 static void render_menu(struct wio_output *output) {
 	struct wio_server *server = output->server;
 	struct wlr_renderer *renderer = server->renderer;
@@ -52,7 +64,8 @@ static void render_menu(struct wio_output *output) {
 	size_t ntextures =
 		sizeof(server->menu.inactive_textures) /
 		sizeof(server->menu.inactive_textures[0]);
-	const int border = 3, margin = 4;
+	int scale = output->wlr_output->scale;
+	int border = 3 * scale, margin = 4 * scale;
 	int text_height = 0, text_width = 0;
 	for (size_t i = 0; i < ntextures; ++i) {
 		int width, height;
@@ -60,6 +73,7 @@ static void render_menu(struct wio_output *output) {
 		// (they probably are)
 		wlr_texture_get_size(
 				server->menu.inactive_textures[i], &width, &height);
+		width /= scale, height /= scale;
 		text_height += height + margin;
 		if (width >= text_width) {
 			text_width = width;
@@ -72,29 +86,46 @@ static void render_menu(struct wio_output *output) {
 	wlr_output_layout_output_coords(
 			server->output_layout, output->wlr_output, &ox, &oy);
 	ox += server->menu.x, oy += server->menu.y;
-	int scale = output->wlr_output->scale;
 
-	struct wlr_box bg_box = {
-		.x = ox * scale,
-		.y = oy * scale,
-		.width = text_width * scale,
-		.height = text_height * scale,
-	};
+	struct wlr_box bg_box = { 0 };
+	// Background
+	bg_box.x = ox;
+	bg_box.y = oy;
+	bg_box.width = text_width;
+	bg_box.height = text_height;
+	scale_box(&bg_box, scale);
 	wlr_render_rect(renderer, &bg_box, menu_unselected,
 			output->wlr_output->transform_matrix);
+	// Top
+	bg_box.x = ox;
+	bg_box.y = oy;
+	bg_box.width = text_width;
 	bg_box.height = border;
+	scale_box(&bg_box, scale);
 	wlr_render_rect(renderer, &bg_box, menu_border,
 			output->wlr_output->transform_matrix);
-	bg_box.width += border;
-	bg_box.y = (oy + text_height) * scale;
+	// Bottom
+	bg_box.x = ox;
+	bg_box.y = oy + text_height;
+	bg_box.width = text_width + border;
+	bg_box.height = border;
+	scale_box(&bg_box, scale);
 	wlr_render_rect(renderer, &bg_box, menu_border,
 			output->wlr_output->transform_matrix);
-	bg_box.y = oy * scale;
-	bg_box.height = text_height * scale;
+	// Left
+	bg_box.x = ox;
+	bg_box.y = oy;
 	bg_box.width = border;
+	bg_box.height = text_height;
+	scale_box(&bg_box, scale);
 	wlr_render_rect(renderer, &bg_box, menu_border,
 			output->wlr_output->transform_matrix);
-	bg_box.x = (ox + text_width) * scale;
+	// Right
+	bg_box.x = ox + text_width;
+	bg_box.y = oy;
+	bg_box.width = border;
+	bg_box.height = text_height;
+	scale_box(&bg_box, scale);
 	wlr_render_rect(renderer, &bg_box, menu_border,
 			output->wlr_output->transform_matrix);
 
@@ -105,19 +136,22 @@ static void render_menu(struct wio_output *output) {
 		int width, height;
 		struct wlr_texture *texture = server->menu.inactive_textures[i];
 		wlr_texture_get_size(texture, &width, &height);
+		width /= scale, height /= scale;
 		struct wlr_box box = { 0 };
-		box.x = ox - 1 * scale;
-		box.y = oy - 1 * scale;
-		box.width = (text_width - border) * scale;
-		box.height = (height + margin) * scale;
+		box.x = ox - scale /* fudge */;
+		box.y = oy - scale /* fudge */;
+		box.width = text_width - border;
+		box.height = height + margin;
 		if (wlr_box_contains_point(
 					&box, server->cursor->x, server->cursor->y)) {
 			server->menu.selected = i;
 			texture = server->menu.active_textures[i];
+			scale_box(&box, scale);
 			wlr_render_rect(renderer, &box, menu_selected,
 					output->wlr_output->transform_matrix);
 		} else {
 			wlr_texture_get_size(texture, &width, &height);
+			width /= scale, height /= scale;
 		}
 		box.x = (ox + (text_width / 2 - width / 2)) * scale;
 		box.y = oy * scale;
@@ -143,9 +177,10 @@ static void render_view_border(struct wlr_renderer *renderer,
 	} else {
 		memcpy(color, inactive_border, sizeof(color));
 	}
+	struct wlr_output *wlr_output = output->wlr_output;
 	double ox, oy;
-	wlr_output_layout_output_coords(
-			output->server->output_layout, output->wlr_output, &ox, &oy);
+	wlr_output_layout_output_coords(output->server->output_layout,
+			wlr_output, &ox, &oy);
 	struct wlr_box borders;
 	// Top
 	borders.x = x - window_border;
@@ -154,8 +189,8 @@ static void render_view_border(struct wlr_renderer *renderer,
 	borders.y += oy;
 	borders.width = width + window_border * 2;
 	borders.height = window_border;
-	wlr_render_rect(renderer, &borders, color,
-			output->wlr_output->transform_matrix);
+	scale_box(&borders, wlr_output->scale);
+	wlr_render_rect(renderer, &borders, color, wlr_output->transform_matrix);
 	// Right
 	borders.x = x + width;
 	borders.y = y - window_border;
@@ -163,8 +198,8 @@ static void render_view_border(struct wlr_renderer *renderer,
 	borders.y += oy;
 	borders.width = window_border;
 	borders.height = height + window_border * 2;
-	wlr_render_rect(renderer, &borders, color,
-			output->wlr_output->transform_matrix);
+	scale_box(&borders, wlr_output->scale);
+	wlr_render_rect(renderer, &borders, color, wlr_output->transform_matrix);
 	// Bottom
 	borders.x = x - window_border;
 	borders.x += ox;
@@ -172,8 +207,8 @@ static void render_view_border(struct wlr_renderer *renderer,
 	borders.y += oy;
 	borders.width = width + window_border * 2;
 	borders.height = window_border;
-	wlr_render_rect(renderer, &borders, color,
-			output->wlr_output->transform_matrix);
+	scale_box(&borders, wlr_output->scale);
+	wlr_render_rect(renderer, &borders, color, wlr_output->transform_matrix);
 	// Left
 	borders.x = x - window_border;
 	borders.x += ox;
@@ -181,8 +216,8 @@ static void render_view_border(struct wlr_renderer *renderer,
 	borders.y += oy;
 	borders.width = window_border;
 	borders.height = height + window_border * 2;
-	wlr_render_rect(renderer, &borders, color,
-			output->wlr_output->transform_matrix);
+	scale_box(&borders, wlr_output->scale);
+	wlr_render_rect(renderer, &borders, color, wlr_output->transform_matrix);
 }
 
 static void output_frame(struct wl_listener *listener, void *data) {
@@ -197,10 +232,8 @@ static void output_frame(struct wl_listener *listener, void *data) {
 		return;
 	}
 
-	int width, height;
-	wlr_output_effective_resolution(output->wlr_output, &width, &height);
-	wlr_renderer_begin(renderer, width, height);
-
+	struct wlr_output *wlr_output = output->wlr_output;
+	wlr_renderer_begin(renderer, wlr_output->width, wlr_output->height);
 	wlr_renderer_clear(renderer, background);
 
 	struct wio_view *view;
@@ -209,7 +242,7 @@ static void output_frame(struct wl_listener *listener, void *data) {
 			continue;
 		}
 		struct render_data rdata = {
-			.output = output->wlr_output,
+			.output = wlr_output,
 			.view = view,
 			.renderer = renderer,
 			.when = &now,
@@ -245,9 +278,9 @@ static void output_frame(struct wl_listener *listener, void *data) {
 		render_menu(output);
 	}
 
-	wlr_output_render_software_cursors(output->wlr_output, NULL);
+	wlr_output_render_software_cursors(wlr_output, NULL);
 	wlr_renderer_end(renderer);
-	wlr_output_commit(output->wlr_output);
+	wlr_output_commit(wlr_output);
 }
 
 void server_new_output(struct wl_listener *listener, void *data) {
@@ -278,19 +311,22 @@ void server_new_output(struct wl_listener *listener, void *data) {
 			wlr_output_layout_add(server->output_layout, wlr_output,
 					config->x, config->y);
 		}
+		bool modeset = false;
 		if (config->width && config->height
 				&& !wl_list_empty(&wlr_output->modes)) {
-			bool set = false;
 			struct wlr_output_mode *mode;
 			wl_list_for_each(mode, &wlr_output->modes, link) {
 				if (mode->width == config->width
 						&& mode->height == config->height) {
 					wlr_output_set_mode(wlr_output, mode);
-					set = true;
+					modeset = true;
 				}
 			}
-			if (!set) {
-				mode = wl_container_of(wlr_output->modes.prev, mode, link);
+		}
+		if (!modeset) {
+			struct wlr_output_mode *mode =
+				wlr_output_preferred_mode(wlr_output);
+			if (mode) {
 				wlr_output_set_mode(wlr_output, mode);
 			}
 		}
@@ -301,9 +337,9 @@ void server_new_output(struct wl_listener *listener, void *data) {
 			wlr_output_set_transform(wlr_output, config->transform);
 		}
 	} else {
-		if (!wl_list_empty(&wlr_output->modes)) {
-			struct wlr_output_mode *mode =
-				wl_container_of(wlr_output->modes.prev, mode, link);
+		struct wlr_output_mode *mode =
+			wlr_output_preferred_mode(wlr_output);
+		if (mode) {
 			wlr_output_set_mode(wlr_output, mode);
 		}
 		wlr_output_layout_add_auto(server->output_layout, wlr_output);

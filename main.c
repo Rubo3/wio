@@ -179,6 +179,13 @@ int main(int argc, char **argv) {
 	server.cursor_mgr = wlr_xcursor_manager_create(NULL, 24);
 	wlr_xcursor_manager_load(server.cursor_mgr, 1);
 
+	struct wio_output_config *config;
+	wl_list_for_each(config, &server.output_configs, link) {
+		if (config->scale > 1){
+			wlr_xcursor_manager_load(server.cursor_mgr, config->scale);
+		}
+	}
+
 	server.cursor_motion.notify = server_cursor_motion;
 	wl_signal_add(&server.cursor->events.motion, &server.cursor_motion);
 	server.cursor_motion_absolute.notify = server_cursor_motion_absolute;

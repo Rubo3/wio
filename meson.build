@@ -21,7 +21,10 @@ add_project_arguments(
 	language: 'c',
 )
 
+cc = meson.get_compiler('c')
+
 cairo = dependency('cairo')
+math = cc.find_library('m')
 wlroots = dependency('wlroots', fallback: ['wlroots', 'wlroots'])
 wayland_server = dependency('wayland-server')
 wayland_protos = dependency('wayland-protocols')
@@ -44,6 +47,7 @@ executable(
 	include_directories: [wio_inc],
 	dependencies: [
 		cairo,
+		math,
 		server_protos,
 		wayland_server,
 		wlroots,
