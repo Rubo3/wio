@@ -65,6 +65,7 @@ void server_new_xdg_surface(struct wl_listener *listener, void *data) {
 		wlr_xdg_toplevel_set_size(xdg_surface,
 				new_view->box.width, new_view->box.height);
 		wl_list_remove(&new_view->link);
+		free(new_view);
 		break;
 	}
 
