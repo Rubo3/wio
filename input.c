@@ -184,6 +184,7 @@ static void handle_button_internal(
 			struct wio_view *view = wio_view_at(server,
 					server->cursor->x, server->cursor->y, &surface, &sx, &sy);
 			if (view != NULL) {
+				wio_view_focus(view, surface);
 				server->interactive.view = view;
 				server->interactive.sx = (int)sx;
 				server->interactive.sy = (int)sy;
@@ -223,11 +224,11 @@ void server_cursor_button(struct wl_listener *listener, void *data) {
 			server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
 	if (server->input_state == INPUT_STATE_NONE && view) {
 		wio_view_focus(view, surface);
+		wlr_seat_pointer_notify_button(server->seat,
+				event->time_msec, event->button, event->state);
 	} else {
 		handle_button_internal(server, event);
 	}
-	wlr_seat_pointer_notify_button(server->seat,
-			event->time_msec, event->button, event->state);
 }
 
 void server_cursor_axis(struct wl_listener *listener, void *data) {
