@@ -12,6 +12,8 @@
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/types/wlr_xdg_shell.h>
 
+static const int window_border = 5;
+
 enum wio_input_state {
 	INPUT_STATE_NONE = 0,
 	INPUT_STATE_MENU,
@@ -20,7 +22,8 @@ enum wio_input_state {
 	INPUT_STATE_MOVE_SELECT,
 	INPUT_STATE_MOVE,
 	INPUT_STATE_RESIZE_SELECT,
-	INPUT_STATE_RESIZE,
+	INPUT_STATE_RESIZE_START,
+	INPUT_STATE_RESIZE_END,
 	INPUT_STATE_DELETE_SELECT,
 	INPUT_STATE_HIDE_SELECT,
 };

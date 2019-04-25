@@ -99,6 +99,14 @@ static void process_cursor_motion(struct wio_server *server, uint32_t time) {
 			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
 					"grabbing", server->cursor);
 			break;
+		case INPUT_STATE_RESIZE_START:
+			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+					"top_left_corner", server->cursor);
+			break;
+		case INPUT_STATE_RESIZE_END:
+			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+					"bottom_right_corner", server->cursor);
+			break;
 		default:
 			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
 					"left_ptr", server->cursor);
@@ -138,6 +146,11 @@ static void menu_handle_button(
 		struct wio_server *server, struct wlr_event_pointer_button *event) {
 	server->menu.x = server->menu.y = -1;
 	switch (server->menu.selected) {
+	case 1:
+		server->input_state = INPUT_STATE_RESIZE_SELECT;
+		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+				"hand1", server->cursor);
+		break;
 	case 2:
 		server->input_state = INPUT_STATE_MOVE_SELECT;
 		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
@@ -149,6 +162,30 @@ static void menu_handle_button(
 	}
 }
 
+static void view_begin_interactive(struct wio_view *view,
+		struct wlr_surface *surface, double sx, double sy,
+		const char *cursor, enum wio_input_state state) {
+	wio_view_focus(view, surface);
+	view->server->interactive.view = view;
+	view->server->interactive.sx = (int)sx;
+	view->server->interactive.sy = (int)sy;
+	view->server->input_state = state;
+	wlr_xcursor_manager_set_cursor_image(view->server->cursor_mgr,
+			"grabbing", view->server->cursor);
+}
+
+static void view_end_interactive(struct wio_server *server) {
+	server->input_state = INPUT_STATE_NONE;
+	server->interactive.view = NULL;
+	if (server->interactive.cursor) {
+		wlr_cursor_set_surface(server->cursor, server->interactive.cursor,
+				server->interactive.hotspot_x, server->interactive.hotspot_y);
+	} else {
+		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+				"left_ptr", server->cursor);
+	}
+}
+
 static void handle_button_internal(
 		struct wio_server *server, struct wlr_event_pointer_button *event) {
 	// TODO: open menu if the client doesn't handle the button press
@@ -157,6 +194,7 @@ static void handle_button_internal(
 		.x = server->menu.x, .y = server->menu.y,
 		.width = server->menu.width, .height = server->menu.height,
 	};
+	int x1, x2, y1, y2;
 	switch (server->input_state) {
 	case INPUT_STATE_NONE:
 		if (event->state == WLR_BUTTON_PRESSED && event->button == BTN_RIGHT) {
@@ -177,6 +215,55 @@ static void handle_button_internal(
 			}
 		}
 		break;
+	case INPUT_STATE_RESIZE_SELECT:
+		if (event->state == WLR_BUTTON_PRESSED) {
+			double sx, sy;
+			struct wlr_surface *surface = NULL;
+			struct wio_view *view = wio_view_at(server,
+					server->cursor->x, server->cursor->y, &surface, &sx, &sy);
+			if (view != NULL) {
+				view_begin_interactive(view, surface, sx, sy,
+						"bottom_right_corner", INPUT_STATE_RESIZE_START);
+			} else {
+				server->input_state = INPUT_STATE_NONE;
+				wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+						"left_ptr", server->cursor);
+			}
+		}
+		break;
+	case INPUT_STATE_RESIZE_START:
+		if (event->state == WLR_BUTTON_PRESSED) {
+			server->interactive.sx = server->cursor->x;
+			server->interactive.sy = server->cursor->y;
+			server->input_state = INPUT_STATE_RESIZE_END;
+		}
+		break;
+	case INPUT_STATE_RESIZE_END:
+		x1 = server->interactive.sx, x2 = server->cursor->x;
+		y1 = server->interactive.sy, y2 = server->cursor->y;
+		if (x2 < x1) {
+			int _ = x1;
+			x1 = x2;
+			x2 = _;
+		}
+		if (y2 < y1) {
+			int _ = y1;
+			y1 = y2;
+			y2 = _;
+		}
+		server->interactive.view->x = x1 + window_border;
+		server->interactive.view->y = y1 + window_border;
+		uint32_t width = x2 - x1, height = y2 - y1;
+		if (width < 100) {
+			width = 100;
+		}
+		if (height < 100) {
+			height = 100;
+		}
+		wlr_xdg_toplevel_set_size(
+				server->interactive.view->xdg_surface, width, height);
+		view_end_interactive(server);
+		break;
 	case INPUT_STATE_MOVE_SELECT:
 		if (event->state == WLR_BUTTON_PRESSED) {
 			double sx, sy;
@@ -184,17 +271,10 @@ static void handle_button_internal(
 			struct wio_view *view = wio_view_at(server,
 					server->cursor->x, server->cursor->y, &surface, &sx, &sy);
 			if (view != NULL) {
-				wio_view_focus(view, surface);
-				server->interactive.view = view;
-				server->interactive.sx = (int)sx;
-				server->interactive.sy = (int)sy;
-				server->input_state = INPUT_STATE_MOVE;
-				wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
-						"grabbing", server->cursor);
+				view_begin_interactive(view, surface, sx, sy,
+						"grabbing", INPUT_STATE_MOVE);
 			} else {
-				server->input_state = INPUT_STATE_NONE;
-				wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
-						"left_ptr", server->cursor);
+				view_end_interactive(server);
 			}
 		}
 		break;
@@ -203,10 +283,7 @@ static void handle_button_internal(
 			server->cursor->x - server->interactive.sx;
 		server->interactive.view->y =
 			server->cursor->y - server->interactive.sy;
-		server->input_state = INPUT_STATE_NONE;
-		server->interactive.view = NULL;
-		wlr_cursor_set_surface(server->cursor, server->interactive.cursor,
-				server->interactive.hotspot_x, server->interactive.hotspot_y);
+		view_end_interactive(server);
 		break;
 	default:
 		// TODO

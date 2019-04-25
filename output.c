@@ -134,8 +134,8 @@ static void render_menu(struct wio_output *output) {
 }
 
 static void render_view_border(struct wlr_renderer *renderer,
-		struct wio_output *output, struct wio_view *view, int x, int y) {
-	const int border = 5;
+		struct wio_output *output, struct wio_view *view,
+		int x, int y, int width, int height) {
 	float color[4];
 	if (view->xdg_surface->toplevel->current.activated) {
 		memcpy(color, active_border, sizeof(color));
@@ -144,31 +144,31 @@ static void render_view_border(struct wlr_renderer *renderer,
 	}
 	struct wlr_box borders;
 	// Top
-	borders.x = x - border;
-	borders.y = y - border;
-	borders.width = view->xdg_surface->surface->current.width + border * 2;
-	borders.height = border;
+	borders.x = x - window_border;
+	borders.y = y - window_border;
+	borders.width = width + window_border * 2;
+	borders.height = window_border;
 	wlr_render_rect(renderer, &borders, color,
 			output->wlr_output->transform_matrix);
 	// Right
-	borders.x = x + view->xdg_surface->surface->current.width;
-	borders.y = y - border;
-	borders.width = border;
-	borders.height = view->xdg_surface->surface->current.height + border * 2;
+	borders.x = x + width;
+	borders.y = y - window_border;
+	borders.width = window_border;
+	borders.height = height + window_border * 2;
 	wlr_render_rect(renderer, &borders, color,
 			output->wlr_output->transform_matrix);
 	// Bottom
-	borders.x = x - border;
-	borders.y = y + view->xdg_surface->surface->current.height;
-	borders.width = view->xdg_surface->surface->current.width + border * 2;
-	borders.height = border;
+	borders.x = x - window_border;
+	borders.y = y + height;
+	borders.width = width + window_border * 2;
+	borders.height = window_border;
 	wlr_render_rect(renderer, &borders, color,
 			output->wlr_output->transform_matrix);
 	// Left
-	borders.x = x - border;
-	borders.y = y - border;
-	borders.width = border;
-	borders.height = view->xdg_surface->surface->current.height + border * 2;
+	borders.x = x - window_border;
+	borders.y = y - window_border;
+	borders.width = window_border;
+	borders.height = height + window_border * 2;
 	wlr_render_rect(renderer, &borders, color,
 			output->wlr_output->transform_matrix);
 }
@@ -203,13 +203,29 @@ static void output_frame(struct wl_listener *listener, void *data) {
 			.when = &now,
 		};
 
-		render_view_border(renderer, output, view, view->x, view->y);
+		render_view_border(renderer, output, view, view->x, view->y,
+				view->xdg_surface->surface->current.width,
+				view->xdg_surface->surface->current.height);
 		wlr_xdg_surface_for_each_surface(view->xdg_surface,
 				render_surface, &rdata);
 		if (server->interactive.view == view) {
-			render_view_border(renderer, output, view,
-				server->cursor->x - server->interactive.sx,
-				server->cursor->y - server->interactive.sy);
+			switch (server->input_state) {
+			case INPUT_STATE_MOVE:
+				render_view_border(renderer, output, view,
+					server->cursor->x - server->interactive.sx,
+					server->cursor->y - server->interactive.sy,
+					view->xdg_surface->surface->current.width,
+					view->xdg_surface->surface->current.height);
+				break;
+			case INPUT_STATE_RESIZE_END:
+				render_view_border(renderer, output, view,
+					server->interactive.sx, server->interactive.sy,
+					server->cursor->x - server->interactive.sx,
+					server->cursor->y - server->interactive.sy);
+				break;
+			default:
+				break;
+			}
 		}
 	}
 

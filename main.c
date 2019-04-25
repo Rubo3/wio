@@ -72,7 +72,7 @@ static void gen_menu_textures(struct wio_server *server) {
 }
 
 int main(int argc, char **argv) {
-	struct wio_server server;
+	struct wio_server server = { 0 };
 
 	wlr_log_init(WLR_DEBUG, NULL);
 
