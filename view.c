@@ -10,7 +10,6 @@ static void xdg_surface_map(struct wl_listener *listener, void *data) {
 	struct wio_server *server = view->server;
 	wio_view_focus(view, view->xdg_surface->surface);
 
-	// TODO: move this view to its preallocated space
 	struct wlr_output *output = wlr_output_layout_output_at(
 			server->output_layout, server->cursor->x, server->cursor->y);
 	struct wlr_output_layout_output *layout = wlr_output_layout_get(
