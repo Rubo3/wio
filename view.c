@@ -58,3 +58,35 @@ void wio_view_focus(struct wio_view *view, struct wlr_surface *surface) {
 	wl_list_remove(&view->link);
 	wl_list_insert(&view->server->views, &view->link);
 }
+
+static bool view_at(struct wio_view *view,
+		double lx, double ly, struct wlr_surface **surface,
+		double *sx, double *sy) {
+	double view_sx = lx - view->x;
+	double view_sy = ly - view->y;
+
+	double _sx, _sy;
+	struct wlr_surface *_surface = NULL;
+	_surface = wlr_xdg_surface_surface_at(
+			view->xdg_surface, view_sx, view_sy, &_sx, &_sy);
+
+	if (_surface != NULL) {
+		*sx = _sx;
+		*sy = _sy;
+		*surface = _surface;
+		return true;
+	}
+
+	return false;
+}
+
+struct wio_view *wio_view_at(struct wio_server *server, double lx, double ly,
+		struct wlr_surface **surface, double *sx, double *sy) {
+	struct wio_view *view;
+	wl_list_for_each(view, &server->views, link) {
+		if (view_at(view, lx, ly, surface, sx, sy)) {
+			return view;
+		}
+	}
+	return NULL;
+}

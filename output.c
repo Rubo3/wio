@@ -64,7 +64,7 @@ static void render_menu(struct wio_output *output) {
 			text_width = width;
 		}
 	}
-	text_width += border * 2;
+	text_width += border * 2 + margin;
 	text_height += border * 2 - margin;
 
 	double ox = 0, oy = 0;

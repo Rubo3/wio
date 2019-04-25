@@ -17,5 +17,7 @@ struct wio_view {
 void server_new_xdg_surface(struct wl_listener *listener, void *data);
 
 void wio_view_focus(struct wio_view *view, struct wlr_surface *surface);
+struct wio_view *wio_view_at(struct wio_server *server, double lx, double ly,
+		struct wlr_surface **surface, double *sx, double *sy);
 
 #endif
