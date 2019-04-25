@@ -181,7 +181,7 @@ static void output_frame(struct wl_listener *listener, void *data) {
 	struct timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
-	if (!wlr_output_make_current(output->wlr_output, NULL)) {
+	if (!wlr_output_attach_render(output->wlr_output, NULL)) {
 		return;
 	}
 
@@ -217,8 +217,9 @@ static void output_frame(struct wl_listener *listener, void *data) {
 		render_menu(output);
 	}
 
+	wlr_output_render_software_cursors(output->wlr_output, NULL);
 	wlr_renderer_end(renderer);
-	wlr_output_swap_buffers(output->wlr_output, NULL, NULL);
+	wlr_output_commit(output->wlr_output);
 }
 
 void server_new_output(struct wl_listener *listener, void *data) {
