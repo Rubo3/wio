@@ -122,9 +122,9 @@ int main(int argc, char **argv) {
 	wl_signal_add(&server.backend->events.new_input, &server.new_input);
 
 	server.seat = wlr_seat_create(server.wl_display, "seat0");
-	//server.request_cursor.notify = seat_request_cursor; // TODO
-	//wl_signal_add(&server.seat->events.request_set_cursor,
-	//		&server.request_cursor);
+	server.request_cursor.notify = seat_request_cursor;
+	wl_signal_add(&server.seat->events.request_set_cursor,
+			&server.request_cursor);
 	wl_list_init(&server.keyboards);
 	wl_list_init(&server.pointers);
 
@@ -136,6 +136,7 @@ int main(int argc, char **argv) {
 
 	server.menu.x = server.menu.y = -1;
 	gen_menu_textures(&server);
+	server.input_state = INPUT_STATE_NONE;
 
 	const char *socket = wl_display_add_socket_auto(server.wl_display);
 	if (!socket) {

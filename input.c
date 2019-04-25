@@ -87,8 +87,23 @@ static void process_cursor_motion(struct wio_server *server, uint32_t time) {
 	struct wio_view *view = wio_view_at(
 			server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
 	if (!view) {
-		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
-				"left_ptr", server->cursor);
+		switch (server->input_state) {
+		case INPUT_STATE_MOVE_SELECT:
+		case INPUT_STATE_RESIZE_SELECT:
+		case INPUT_STATE_DELETE_SELECT:
+		case INPUT_STATE_HIDE_SELECT:
+			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+					"hand1", server->cursor);
+			break;
+		case INPUT_STATE_MOVE:
+			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+					"grabbing", server->cursor);
+			break;
+		default:
+			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+					"left_ptr", server->cursor);
+			break;
+		}
 	}
 	if (surface) {
 		bool focus_changed = seat->pointer_state.focused_surface != surface;
@@ -119,6 +134,21 @@ void server_cursor_motion_absolute(
 	process_cursor_motion(server, event->time_msec);
 }
 
+static void menu_handle_button(
+		struct wio_server *server, struct wlr_event_pointer_button *event) {
+	server->menu.x = server->menu.y = -1;
+	switch (server->menu.selected) {
+	case 2:
+		server->input_state = INPUT_STATE_MOVE_SELECT;
+		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+				"hand1", server->cursor);
+		break;
+	default:
+		server->input_state = INPUT_STATE_NONE;
+		break;
+	}
+}
+
 static void handle_button_internal(
 		struct wio_server *server, struct wlr_event_pointer_button *event) {
 	// TODO: open menu if the client doesn't handle the button press
@@ -127,25 +157,59 @@ static void handle_button_internal(
 		.x = server->menu.x, .y = server->menu.y,
 		.width = server->menu.width, .height = server->menu.height,
 	};
-	if (server->menu.x != -1 && server->menu.y != -1) {
+	switch (server->input_state) {
+	case INPUT_STATE_NONE:
+		if (event->state == WLR_BUTTON_PRESSED && event->button == BTN_RIGHT) {
+			// TODO: Open over the last-used menu item
+			server->input_state = INPUT_STATE_MENU;
+			server->menu.x = server->cursor->x;
+			server->menu.y = server->cursor->y;
+		}
+		break;
+	case INPUT_STATE_MENU:
 		if (wlr_box_contains_point(
 					&menu_box, server->cursor->x, server->cursor->y)) {
-			// TODO: menu_handle_button()
+			menu_handle_button(server, event);
 		} else {
 			if (event->state == WLR_BUTTON_PRESSED) {
+				server->input_state = INPUT_STATE_NONE;
 				server->menu.x = server->menu.y = -1;
 			}
 		}
-	} else {
+		break;
+	case INPUT_STATE_MOVE_SELECT:
 		if (event->state == WLR_BUTTON_PRESSED) {
-			switch (event->button) {
-			case BTN_RIGHT:
-				// TODO: Open over the last-used menu item
-				server->menu.x = server->cursor->x;
-				server->menu.y = server->cursor->y;
-				break;
+			double sx, sy;
+			struct wlr_surface *surface = NULL;
+			struct wio_view *view = wio_view_at(server,
+					server->cursor->x, server->cursor->y, &surface, &sx, &sy);
+			if (view != NULL) {
+				server->interactive.view = view;
+				server->interactive.sx = (int)sx;
+				server->interactive.sy = (int)sy;
+				server->input_state = INPUT_STATE_MOVE;
+				wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+						"grabbing", server->cursor);
+			} else {
+				server->input_state = INPUT_STATE_NONE;
+				wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+						"left_ptr", server->cursor);
 			}
 		}
+		break;
+	case INPUT_STATE_MOVE:
+		server->interactive.view->x =
+			server->cursor->x - server->interactive.sx;
+		server->interactive.view->y =
+			server->cursor->y - server->interactive.sy;
+		server->input_state = INPUT_STATE_NONE;
+		server->interactive.view = NULL;
+		wlr_cursor_set_surface(server->cursor, server->interactive.cursor,
+				server->interactive.hotspot_x, server->interactive.hotspot_y);
+		break;
+	default:
+		// TODO
+		break;
 	}
 }
 
@@ -153,12 +217,11 @@ void server_cursor_button(struct wl_listener *listener, void *data) {
 	struct wio_server *server =
 		wl_container_of(listener, server, cursor_button);
 	struct wlr_event_pointer_button *event = data;
-	// TODO: Internal button processing (e.g. resize, menus, etc)
 	double sx, sy;
 	struct wlr_surface *surface = NULL;
 	struct wio_view *view = wio_view_at(
 			server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
-	if (view) {
+	if (server->input_state == INPUT_STATE_NONE && view) {
 		wio_view_focus(view, surface);
 	} else {
 		handle_button_internal(server, event);
@@ -179,4 +242,20 @@ void server_cursor_frame(struct wl_listener *listener, void *data) {
 	struct wio_server *server =
 		wl_container_of(listener, server, cursor_frame);
 	wlr_seat_pointer_notify_frame(server->seat);
+}
+
+void seat_request_cursor(struct wl_listener *listener, void *data) {
+	struct wio_server *server = wl_container_of(
+			listener, server, request_cursor);
+	struct wlr_seat_pointer_request_set_cursor_event *event = data;
+	struct wlr_seat_client *focused_client =
+		server->seat->pointer_state.focused_client;
+	if (focused_client == event->seat_client
+			&& server->input_state == INPUT_STATE_NONE) {
+		wlr_cursor_set_surface(server->cursor, event->surface,
+				event->hotspot_x, event->hotspot_y);
+		server->interactive.cursor = event->surface;
+		server->interactive.hotspot_x = event->hotspot_x;
+		server->interactive.hotspot_y = event->hotspot_y;
+	}
 }

@@ -12,6 +12,19 @@
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/types/wlr_xdg_shell.h>
 
+enum wio_input_state {
+	INPUT_STATE_NONE = 0,
+	INPUT_STATE_MENU,
+	INPUT_STATE_NEW_START,
+	INPUT_STATE_NEW_END,
+	INPUT_STATE_MOVE_SELECT,
+	INPUT_STATE_MOVE,
+	INPUT_STATE_RESIZE_SELECT,
+	INPUT_STATE_RESIZE,
+	INPUT_STATE_DELETE_SELECT,
+	INPUT_STATE_HIDE_SELECT,
+};
+
 struct wio_server {
 	struct wl_display *wl_display;
 
@@ -36,6 +49,7 @@ struct wio_server {
 	struct wl_listener cursor_button;
 	struct wl_listener cursor_axis;
 	struct wl_listener cursor_frame;
+	struct wl_listener request_cursor;
 
 	struct wl_listener new_xdg_surface;
 
@@ -44,7 +58,17 @@ struct wio_server {
 		int width, height;
 		struct wlr_texture *active_textures[5];
 		struct wlr_texture *inactive_textures[5];
+		int selected;
 	} menu;
+
+	struct {
+		int sx, sy;
+		struct wio_view *view;
+		struct wlr_surface *cursor;
+		int hotspot_x, hotspot_y;
+	} interactive;
+
+	enum wio_input_state input_state;
 };
 
 struct wio_output {
@@ -73,5 +97,6 @@ void server_cursor_motion_absolute(struct wl_listener *listener, void *data);
 void server_cursor_button(struct wl_listener *listener, void *data);
 void server_cursor_axis(struct wl_listener *listener, void *data);
 void server_cursor_frame(struct wl_listener *listener, void *data);
+void seat_request_cursor(struct wl_listener *listener, void *data);
 
 #endif
