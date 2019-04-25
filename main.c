@@ -7,10 +7,18 @@
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/render/wlr_texture.h>
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_data_control_v1.h>
 #include <wlr/types/wlr_data_device.h>
+#include <wlr/types/wlr_export_dmabuf_v1.h>
+#include <wlr/types/wlr_gamma_control_v1.h>
+#include <wlr/types/wlr_gamma_control.h>
+#include <wlr/types/wlr_gtk_primary_selection.h>
+#include <wlr/types/wlr_primary_selection_v1.h>
+#include <wlr/types/wlr_screencopy_v1.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/types/wlr_xdg_shell.h>
+#include <wlr/types/wlr_xdg_output_v1.h>
 #include <wlr/util/log.h>
 #include "server.h"
 #include "view.h"
@@ -76,11 +84,21 @@ int main(int argc, char **argv) {
 	wlr_compositor_create(server.wl_display, server.renderer);
 	wlr_data_device_manager_create(server.wl_display);
 
+	wlr_export_dmabuf_manager_v1_create(server.wl_display);
+	wlr_screencopy_manager_v1_create(server.wl_display);
+	wlr_data_control_manager_v1_create(server.wl_display);
+	wlr_primary_selection_v1_device_manager_create(server.wl_display);
+
+	wlr_gamma_control_manager_create(server.wl_display);
+	wlr_gamma_control_manager_v1_create(server.wl_display);
+	wlr_gtk_primary_selection_device_manager_create(server.wl_display);
+
 	wl_list_init(&server.outputs);
 	server.new_output.notify = server_new_output;
 	wl_signal_add(&server.backend->events.new_output, &server.new_output);
 
 	server.output_layout = wlr_output_layout_create();
+	wlr_xdg_output_manager_v1_create(server.wl_display, server.output_layout);
 
 	server.cursor = wlr_cursor_create();
 	wlr_cursor_attach_output_layout(server.cursor, server.output_layout);
