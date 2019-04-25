@@ -8,8 +8,6 @@
 static void xdg_surface_map(struct wl_listener *listener, void *data) {
 	struct wio_view *view = wl_container_of(listener, view, map);
 	wio_view_focus(view, view->xdg_surface->surface);
-	wlr_xdg_toplevel_set_tiled(view->xdg_surface,
-		WLR_EDGE_LEFT | WLR_EDGE_RIGHT | WLR_EDGE_TOP | WLR_EDGE_BOTTOM);
 }
 
 static void xdg_surface_destroy(struct wl_listener *listener, void *data) {
@@ -34,6 +32,9 @@ void server_new_xdg_surface(struct wl_listener *listener, void *data) {
 	wl_signal_add(&xdg_surface->events.destroy, &view->destroy);
 	view->map.notify = xdg_surface_map;
 	wl_signal_add(&xdg_surface->events.map, &view->map);
+
+	wlr_xdg_toplevel_set_tiled(view->xdg_surface,
+		WLR_EDGE_LEFT | WLR_EDGE_RIGHT | WLR_EDGE_TOP | WLR_EDGE_BOTTOM);
 
 	wl_list_insert(&server->views, &view->link);
 }
