@@ -3,7 +3,9 @@
 Wio is a Wayland compositor for Linux & FreeBSD which has a similar look & feel
 to plan9's rio.
 
-This software is incomplete. Notably missing is a Rio-esque FUSE filesystem.
+This software is incomplete. Notably missing is a Rio-esque FUSE filesystem and
+Rio's built-in command line (we depend on an external, tty-style terminal
+emulator).
 
 ## Basic principles
 
