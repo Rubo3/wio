@@ -143,10 +143,15 @@ static void render_view_border(struct wlr_renderer *renderer,
 	} else {
 		memcpy(color, inactive_border, sizeof(color));
 	}
+	double ox, oy;
+	wlr_output_layout_output_coords(
+			output->server->output_layout, output->wlr_output, &ox, &oy);
 	struct wlr_box borders;
 	// Top
 	borders.x = x - window_border;
+	borders.x += ox;
 	borders.y = y - window_border;
+	borders.y += oy;
 	borders.width = width + window_border * 2;
 	borders.height = window_border;
 	wlr_render_rect(renderer, &borders, color,
@@ -154,20 +159,26 @@ static void render_view_border(struct wlr_renderer *renderer,
 	// Right
 	borders.x = x + width;
 	borders.y = y - window_border;
+	borders.x += ox;
+	borders.y += oy;
 	borders.width = window_border;
 	borders.height = height + window_border * 2;
 	wlr_render_rect(renderer, &borders, color,
 			output->wlr_output->transform_matrix);
 	// Bottom
 	borders.x = x - window_border;
+	borders.x += ox;
 	borders.y = y + height;
+	borders.y += oy;
 	borders.width = width + window_border * 2;
 	borders.height = window_border;
 	wlr_render_rect(renderer, &borders, color,
 			output->wlr_output->transform_matrix);
 	// Left
 	borders.x = x - window_border;
+	borders.x += ox;
 	borders.y = y - window_border;
+	borders.y += oy;
 	borders.width = window_border;
 	borders.height = height + window_border * 2;
 	wlr_render_rect(renderer, &borders, color,
