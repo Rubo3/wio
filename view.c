@@ -1,12 +1,15 @@
 #include <stdlib.h>
 #include <wayland-server.h>
 #include <wlr/types/wlr_xdg_shell.h>
+#include "xdg-shell-protocol.h"
 #include "server.h"
 #include "view.h"
 
 static void xdg_surface_map(struct wl_listener *listener, void *data) {
 	struct wio_view *view = wl_container_of(listener, view, map);
 	wio_view_focus(view, view->xdg_surface->surface);
+	wlr_xdg_toplevel_set_tiled(view->xdg_surface,
+		WLR_EDGE_LEFT | WLR_EDGE_RIGHT | WLR_EDGE_TOP | WLR_EDGE_BOTTOM);
 }
 
 static void xdg_surface_destroy(struct wl_listener *listener, void *data) {
