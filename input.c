@@ -156,6 +156,11 @@ static void menu_handle_button(
 		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
 				"hand1", server->cursor);
 		break;
+	case 3:
+		server->input_state = INPUT_STATE_DELETE_SELECT;
+		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+				"hand1", server->cursor);
+		break;
 	default:
 		server->input_state = INPUT_STATE_NONE;
 		break;
@@ -284,6 +289,18 @@ static void handle_button_internal(
 		server->interactive.view->y =
 			server->cursor->y - server->interactive.sy;
 		view_end_interactive(server);
+		break;
+	case INPUT_STATE_DELETE_SELECT:
+		if (event->state == WLR_BUTTON_PRESSED) {
+			double sx, sy;
+			struct wlr_surface *surface = NULL;
+			struct wio_view *view = wio_view_at(server,
+					server->cursor->x, server->cursor->y, &surface, &sx, &sy);
+			if (view != NULL) {
+				wlr_xdg_toplevel_send_close(view->xdg_surface);
+				view_end_interactive(server);
+			}
+		}
 		break;
 	default:
 		// TODO
