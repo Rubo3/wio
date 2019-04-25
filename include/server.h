@@ -44,6 +44,7 @@ struct wio_server {
 	struct wlr_xdg_shell *xdg_shell;
 
 	struct wl_list outputs;
+	struct wl_list output_configs;
 	struct wl_list inputs;
 	struct wl_list pointers;
 	struct wl_list keyboards;
@@ -84,6 +85,15 @@ struct wio_output {
 	struct wlr_output *wlr_output;
 
 	struct wl_listener frame;
+};
+
+struct wio_output_config {
+	const char *name;
+	int x, y;
+	int width, height;
+	int scale;
+	enum wl_output_transform transform;
+	struct wl_list link;
 };
 
 struct wio_keyboard {

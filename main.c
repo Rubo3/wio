@@ -1,7 +1,9 @@
-#define _POSIX_C_SOURCE 200112L
+#define _POSIX_C_SOURCE 200809L
+#include <assert.h>
 #include <cairo/cairo.h>
 #include <getopt.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <wayland-server.h>
 #include <wlr/backend.h>
@@ -72,14 +74,38 @@ static void gen_menu_textures(struct wio_server *server) {
 	cairo_surface_destroy(surf);
 }
 
+static enum wl_output_transform str_to_transform(const char *str) {
+	if (strcmp(str, "normal") == 0 || strcmp(str, "0") == 0) {
+		return WL_OUTPUT_TRANSFORM_NORMAL;
+	} else if (strcmp(str, "90") == 0) {
+		return WL_OUTPUT_TRANSFORM_90;
+	} else if (strcmp(str, "180") == 0) {
+		return WL_OUTPUT_TRANSFORM_180;
+	} else if (strcmp(str, "270") == 0) {
+		return WL_OUTPUT_TRANSFORM_270;
+	} else if (strcmp(str, "flipped") == 0) {
+		return WL_OUTPUT_TRANSFORM_FLIPPED;
+	} else if (strcmp(str, "flipped-90") == 0) {
+		return WL_OUTPUT_TRANSFORM_FLIPPED_90;
+	} else if (strcmp(str, "flipped-180") == 0) {
+		return WL_OUTPUT_TRANSFORM_FLIPPED_180;
+	} else if (strcmp(str, "flipped-270") == 0) {
+		return WL_OUTPUT_TRANSFORM_FLIPPED_270;
+	} else {
+		fprintf(stderr, "Invalid output transform %s\n", str);
+		exit(1);
+	}
+}
+
 int main(int argc, char **argv) {
 	struct wio_server server = { 0 };
 	server.cage = "cage -d";
 	server.term = "alacritty";
 	wlr_log_init(WLR_DEBUG, NULL);
+	wl_list_init(&server.output_configs);
 
 	int c;
-	while ((c = getopt(argc, argv, "c:t:h")) != -1) {
+	while ((c = getopt(argc, argv, "c:t:o:h")) != -1) {
 		switch (c) {
 		case 'c':
 			server.cage = optarg;
@@ -87,10 +113,37 @@ int main(int argc, char **argv) {
 		case 't':
 			server.term = optarg;
 			break;
-		case 'h':
-			printf("Usage: %s [-t terminal command] [-c cage command]\n",
-					argv[0]);
+		case 'o':;
+			// name:x:y:width:height:scale:transform
+			struct wio_output_config *config =
+				calloc(1, sizeof(struct wio_output_config));
+			wl_list_insert(&server.output_configs, &config->link);
+			const char *tok = strtok(optarg, ":");
+			assert(tok);
+			config->name = strdup(tok);
+			tok = strtok(NULL, ":");
+			assert(tok);
+			config->x = atoi(tok);
+			tok = strtok(NULL, ":");
+			assert(tok);
+			config->y = atoi(tok);
+			tok = strtok(NULL, ":");
+			if (!tok) break;
+			config->width = atoi(tok);
+			tok = strtok(NULL, ":");
+			assert(tok);
+			config->height = atoi(tok);
+			tok = strtok(NULL, ":");
+			if (!tok) break;
+			config->scale = atoi(tok);
+			tok = strtok(NULL, ":");
+			if (!tok) break;
+			config->transform = str_to_transform(tok);
 			break;
+		case 'h':
+			printf("Usage: %s [-t <term>] [-c <cage>] [-o <output config>...]\n",
+					argv[0]);
+			return 0;
 		default:
 			fprintf(stderr, "Unrecognized option %c\n", c);
 			return 1;

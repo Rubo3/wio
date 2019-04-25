@@ -244,11 +244,6 @@ void server_new_output(struct wl_listener *listener, void *data) {
 		wl_container_of(listener, server, new_output);
 	struct wlr_output *wlr_output = data;
 
-	if (!wl_list_empty(&wlr_output->modes)) {
-		struct wlr_output_mode *mode =
-			wl_container_of(wlr_output->modes.prev, mode, link);
-		wlr_output_set_mode(wlr_output, mode);
-	}
 
 	struct wio_output *output = calloc(1, sizeof(struct wio_output));
 	output->wlr_output = wlr_output;
@@ -257,6 +252,51 @@ void server_new_output(struct wl_listener *listener, void *data) {
 	wl_signal_add(&wlr_output->events.frame, &output->frame);
 	wl_list_insert(&server->outputs, &output->link);
 
-	wlr_output_layout_add_auto(server->output_layout, wlr_output);
+	struct wio_output_config *_config, *config = NULL;
+	wl_list_for_each(_config, &server->output_configs, link) {
+		if (strcmp(_config->name, wlr_output->name) == 0) {
+			config = _config;
+			break;
+		}
+	}
+
+	if (config) {
+		if (config->x == -1 && config->y == -1) {
+			wlr_output_layout_add_auto(server->output_layout, wlr_output);
+		} else {
+			wlr_output_layout_add(server->output_layout, wlr_output,
+					config->x, config->y);
+		}
+		if (config->width && config->height
+				&& !wl_list_empty(&wlr_output->modes)) {
+			bool set = false;
+			struct wlr_output_mode *mode;
+			wl_list_for_each(mode, &wlr_output->modes, link) {
+				if (mode->width == config->width
+						&& mode->height == config->height) {
+					wlr_output_set_mode(wlr_output, mode);
+					set = true;
+				}
+			}
+			if (!set) {
+				mode = wl_container_of(wlr_output->modes.prev, mode, link);
+				wlr_output_set_mode(wlr_output, mode);
+			}
+		}
+		if (config->scale) {
+			wlr_output_set_scale(wlr_output, config->scale);
+		}
+		if (config->transform) {
+			wlr_output_set_transform(wlr_output, config->transform);
+		}
+	} else {
+		if (!wl_list_empty(&wlr_output->modes)) {
+			struct wlr_output_mode *mode =
+				wl_container_of(wlr_output->modes.prev, mode, link);
+			wlr_output_set_mode(wlr_output, mode);
+		}
+		wlr_output_layout_add_auto(server->output_layout, wlr_output);
+	}
+
 	wlr_output_create_global(wlr_output);
 }
