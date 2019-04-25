@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
 	wl_signal_add(&server.xdg_shell->events.new_surface,
 			&server.new_xdg_surface);
 
-	server.menu.x = server.menu.y = 10;
+	server.menu.x = server.menu.y = -1;
 	gen_menu_textures(&server);
 
 	const char *socket = wl_display_add_socket_auto(server.wl_display);

@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <linux/input-event-codes.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_input_device.h>
@@ -97,6 +98,36 @@ void server_cursor_motion_absolute(
 	process_cursor_motion(server, event->time_msec);
 }
 
+static void handle_button_internal(
+		struct wio_server *server, struct wlr_event_pointer_button *event) {
+	// TODO: open menu if the client doesn't handle the button press
+	// will basically involve some serial hacking
+	struct wlr_box menu_box = {
+		.x = server->menu.x, .y = server->menu.y,
+		.width = server->menu.width, .height = server->menu.height,
+	};
+	if (server->menu.x != -1 && server->menu.y != -1) {
+		if (wlr_box_contains_point(
+					&menu_box, server->cursor->x, server->cursor->y)) {
+			// TODO: menu_handle_button()
+		} else {
+			if (event->state == WLR_BUTTON_PRESSED) {
+				server->menu.x = server->menu.y = -1;
+			}
+		}
+	} else {
+		if (event->state == WLR_BUTTON_PRESSED) {
+			switch (event->button) {
+			case BTN_RIGHT:
+				// TODO: Open over the last-used menu item
+				server->menu.x = server->cursor->x;
+				server->menu.y = server->cursor->y;
+				break;
+			}
+		}
+	}
+}
+
 void server_cursor_button(struct wl_listener *listener, void *data) {
 	struct wio_server *server =
 		wl_container_of(listener, server, cursor_button);
@@ -108,6 +139,8 @@ void server_cursor_button(struct wl_listener *listener, void *data) {
 			server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
 	if (view) {
 		wio_view_focus(view, surface);
+	} else {
+		handle_button_internal(server, event);
 	}
 	wlr_seat_pointer_notify_button(server->seat,
 			event->time_msec, event->button, event->state);

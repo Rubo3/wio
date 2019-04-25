@@ -41,6 +41,7 @@ struct wio_server {
 
 	struct {
 		int x, y;
+		int width, height;
 		struct wlr_texture *active_textures[5];
 		struct wlr_texture *inactive_textures[5];
 	} menu;

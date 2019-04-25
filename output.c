@@ -101,33 +101,34 @@ static void render_menu(struct wio_output *output) {
 	oy += margin;
 	for (size_t i = 0; i < ntextures; ++i) {
 		int width, height;
-		struct wlr_texture *texture;
-		if (i == 0) { // TODO: if cursor is over this menu item
+		struct wlr_texture *texture = server->menu.inactive_textures[i];
+		wlr_texture_get_size(texture, &width, &height);
+		struct wlr_box box = { 0 };
+		box.x = ox - 1 * scale;
+		box.y = oy - 1 * scale;
+		box.width = (text_width - border) * scale;
+		box.height = (height + margin) * scale;
+		if (wlr_box_contains_point(
+					&box, server->cursor->x, server->cursor->y)) {
 			texture = server->menu.active_textures[i];
-			wlr_texture_get_size(texture, &width, &height);
-			struct wlr_box box = {
-				.x = ox - 1 * scale, .y = oy - 1 * scale,
-				.width = (text_width - border) * scale,
-				.height = (height + margin) * scale,
-			};
 			wlr_render_rect(renderer, &box, menu_selected,
 					output->wlr_output->transform_matrix);
 		} else {
-			texture = server->menu.inactive_textures[i];
 			wlr_texture_get_size(texture, &width, &height);
 		}
-		struct wlr_box box = {
-			.x = (ox + (text_width / 2 - width / 2)) * scale,
-			.y = oy * scale,
-			.width = width * scale,
-			.height = height * scale,
-		};
+		box.x = (ox + (text_width / 2 - width / 2)) * scale;
+		box.y = oy * scale;
+		box.width = width * scale;
+		box.height = height * scale;
 		float matrix[9];
 		wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
 			output->wlr_output->transform_matrix);
 		wlr_render_texture_with_matrix(renderer, texture, matrix, 1);
 		oy += height + margin;
 	}
+
+	server->menu.width = text_width;
+	server->menu.height = text_height;
 }
 
 static void output_frame(struct wl_listener *listener, void *data) {
