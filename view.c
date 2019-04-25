@@ -17,9 +17,11 @@ static void xdg_surface_map(struct wl_listener *listener, void *data) {
 	if (view->x == -1 || view->y == -1) {
 		struct wlr_surface_state *current =
 			&view->xdg_surface->surface->current;
+		int owidth, oheight;
+		wlr_output_effective_resolution(output, &owidth, &oheight);
 		wio_view_move(view,
-				layout->x + (output->width / 2 - current->width / 2),
-				layout->y + (output->height / 2 - current->height / 2));
+				layout->x + (owidth / 2 - current->width / 2),
+				layout->y + (oheight / 2 - current->height / 2));
 	} else {
 		// Sends wl_surface_enter
 		wio_view_move(view, view->x, view->y);
