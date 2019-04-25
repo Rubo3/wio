@@ -9,6 +9,27 @@
 #include "server.h"
 #include "view.h"
 
+static void keyboard_handle_modifiers(
+		struct wl_listener *listener, void *data) {
+	struct wio_keyboard *keyboard =
+		wl_container_of(listener, keyboard, modifiers);
+	wlr_seat_set_keyboard(keyboard->server->seat, keyboard->device);
+	wlr_seat_keyboard_notify_modifiers(keyboard->server->seat,
+		&keyboard->device->keyboard->modifiers);
+}
+
+static void keyboard_handle_key(
+		struct wl_listener *listener, void *data) {
+	struct wio_keyboard *keyboard =
+		wl_container_of(listener, keyboard, key);
+	struct wio_server *server = keyboard->server;
+	struct wlr_event_keyboard_key *event = data;
+	struct wlr_seat *seat = server->seat;
+	wlr_seat_set_keyboard(seat, keyboard->device);
+	wlr_seat_keyboard_notify_key(seat, event->time_msec,
+		event->keycode, event->state);
+}
+
 static void server_new_keyboard(
 		struct wio_server *server, struct wlr_input_device *device) {
 	struct wio_keyboard *keyboard = calloc(1, sizeof(struct wio_keyboard));
@@ -25,10 +46,10 @@ static void server_new_keyboard(
 	xkb_context_unref(context);
 	wlr_keyboard_set_repeat_info(device->keyboard, 25, 600);
 
-	//keyboard->modifiers.notify = keyboard_handle_modifiers;
-	//wl_signal_add(&device->keyboard->events.modifiers, &keyboard->modifiers);
-	//keyboard->key.notify = keyboard_handle_key;
-	//wl_signal_add(&device->keyboard->events.key, &keyboard->key);
+	keyboard->modifiers.notify = keyboard_handle_modifiers;
+	wl_signal_add(&device->keyboard->events.modifiers, &keyboard->modifiers);
+	keyboard->key.notify = keyboard_handle_key;
+	wl_signal_add(&device->keyboard->events.key, &keyboard->key);
 
 	wlr_seat_set_keyboard(server->seat, device);
 	wl_list_insert(&server->keyboards, &keyboard->link);
