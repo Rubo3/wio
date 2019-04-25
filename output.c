@@ -82,10 +82,9 @@ static void render_menu(struct wio_output *output) {
 	text_width += border * 2 + margin;
 	text_height += border * 2 - margin;
 
-	double ox = 0, oy = 0;
+	double ox = server->menu.x, oy = server->menu.y;
 	wlr_output_layout_output_coords(
 			server->output_layout, output->wlr_output, &ox, &oy);
-	ox += server->menu.x, oy += server->menu.y;
 
 	struct wlr_box bg_box = { 0 };
 	// Background
@@ -129,6 +128,9 @@ static void render_menu(struct wio_output *output) {
 	wlr_render_rect(renderer, &bg_box, menu_border,
 			output->wlr_output->transform_matrix);
 
+	double cur_x = server->cursor->x, cur_y = server->cursor->y;
+	wlr_output_layout_output_coords(server->output_layout,
+			output->wlr_output, &cur_x, &cur_y);
 	server->menu.selected = -1;
 	ox += margin;
 	oy += margin;
@@ -142,8 +144,7 @@ static void render_menu(struct wio_output *output) {
 		box.y = oy - scale /* fudge */;
 		box.width = text_width - border;
 		box.height = height + margin;
-		if (wlr_box_contains_point(
-					&box, server->cursor->x, server->cursor->y)) {
+		if (wlr_box_contains_point(&box, cur_x, cur_y)) {
 			server->menu.selected = i;
 			texture = server->menu.active_textures[i];
 			scale_box(&box, scale);
@@ -178,45 +179,43 @@ static void render_view_border(struct wlr_renderer *renderer,
 		memcpy(color, inactive_border, sizeof(color));
 	}
 	struct wlr_output *wlr_output = output->wlr_output;
-	double ox, oy;
-	wlr_output_layout_output_coords(output->server->output_layout,
-			wlr_output, &ox, &oy);
+	int scale = wlr_output->scale;
+	double ox = 0, oy = 0;
+	wlr_output_layout_output_coords(
+			output->server->output_layout, wlr_output, &ox, &oy);
+	ox *= scale, oy *= scale;
 	struct wlr_box borders;
 	// Top
-	borders.x = x - window_border;
+	borders.x = (x - window_border) * scale;
 	borders.x += ox;
-	borders.y = y - window_border;
+	borders.y = (y - window_border) * scale;
 	borders.y += oy;
-	borders.width = width + window_border * 2;
-	borders.height = window_border;
-	scale_box(&borders, wlr_output->scale);
+	borders.width = (width + window_border * 2) * scale;
+	borders.height = window_border * scale;
 	wlr_render_rect(renderer, &borders, color, wlr_output->transform_matrix);
 	// Right
-	borders.x = x + width;
-	borders.y = y - window_border;
+	borders.x = (x + width) * scale;
 	borders.x += ox;
+	borders.y = (y - window_border) * scale;
 	borders.y += oy;
-	borders.width = window_border;
-	borders.height = height + window_border * 2;
-	scale_box(&borders, wlr_output->scale);
+	borders.width = window_border * scale;
+	borders.height = (height + window_border * 2) * scale;
 	wlr_render_rect(renderer, &borders, color, wlr_output->transform_matrix);
 	// Bottom
-	borders.x = x - window_border;
+	borders.x = (x - window_border) * scale;
 	borders.x += ox;
-	borders.y = y + height;
+	borders.y = (y + height) * scale;
 	borders.y += oy;
-	borders.width = width + window_border * 2;
-	borders.height = window_border;
-	scale_box(&borders, wlr_output->scale);
+	borders.width = (width + window_border * 2) * scale;
+	borders.height = window_border * scale;
 	wlr_render_rect(renderer, &borders, color, wlr_output->transform_matrix);
 	// Left
-	borders.x = x - window_border;
+	borders.x = (x - window_border) * scale;
 	borders.x += ox;
-	borders.y = y - window_border;
+	borders.y = (y - window_border) * scale;
 	borders.y += oy;
-	borders.width = window_border;
-	borders.height = height + window_border * 2;
-	scale_box(&borders, wlr_output->scale);
+	borders.width = window_border * scale;
+	borders.height = (height + window_border * 2) * scale;
 	wlr_render_rect(renderer, &borders, color, wlr_output->transform_matrix);
 }
 
