@@ -23,9 +23,20 @@ add_project_arguments(
 
 cc = meson.get_compiler('c')
 
+# Prefer wlroots subproject if it is available.
+wlroots_proj = subproject(
+	'wlroots',
+	default_options: ['rootston=false', 'examples=false'],
+	required: false,
+)
+if wlroots_proj.found()
+	wlroots = wlroots_proj.get_variable('wlroots')
+else
+	wlroots = dependency('wlroots')
+endif
+
 cairo = dependency('cairo')
 math = cc.find_library('m')
-wlroots = dependency('wlroots', fallback: ['wlroots', 'wlroots'])
 wayland_server = dependency('wayland-server')
 wayland_protos = dependency('wayland-protocols')
 xkbcommon = dependency('xkbcommon')
