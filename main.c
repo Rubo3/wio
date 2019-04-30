@@ -16,6 +16,7 @@
 #include <wlr/types/wlr_gamma_control_v1.h>
 #include <wlr/types/wlr_gamma_control.h>
 #include <wlr/types/wlr_gtk_primary_selection.h>
+#include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_primary_selection_v1.h>
 #include <wlr/types/wlr_screencopy_v1.h>
 #include <wlr/types/wlr_seat.h>
@@ -23,6 +24,7 @@
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/types/wlr_xdg_output_v1.h>
 #include <wlr/util/log.h>
+#include "layers.h"
 #include "server.h"
 #include "view.h"
 
@@ -216,6 +218,11 @@ int main(int argc, char **argv) {
 			&server.new_xdg_surface);
 
 	wl_list_init(&server.new_views);
+
+	server.layer_shell = wlr_layer_shell_v1_create(server.wl_display);
+	server.new_layer_surface.notify = server_new_layer_surface;
+	wl_signal_add(&server.layer_shell->events.new_surface,
+			&server.new_layer_surface);
 
 	server.menu.x = server.menu.y = -1;
 	gen_menu_textures(&server);

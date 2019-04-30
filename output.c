@@ -8,6 +8,7 @@
 #include <wlr/types/wlr_output.h>
 #include <wlr/render/wlr_renderer.h>
 #include "colors.h"
+#include "layers.h"
 #include "server.h"
 #include "view.h"
 
@@ -219,6 +220,51 @@ static void render_view_border(struct wlr_renderer *renderer,
 	wlr_render_rect(renderer, &borders, color, wlr_output->transform_matrix);
 }
 
+struct render_data_layer {
+	struct wlr_output *output;
+	struct wlr_renderer *renderer;
+	struct wio_view *view;
+	struct timespec *when;
+};
+
+static void render_layer_surface(struct wlr_surface *surface,
+		int sx, int sy, void *data) {
+	struct wio_layer_surface *layer_surface = data;
+	struct wlr_texture *texture = wlr_surface_get_texture(surface);
+	if (texture == NULL) {
+		return;
+	}
+	struct wlr_output *output = layer_surface->layer_surface->output;
+	double ox = 0, oy = 0;
+	wlr_output_layout_output_coords(
+			layer_surface->server->output_layout, output, &ox, &oy);
+	ox += layer_surface->geo.x + sx, oy += layer_surface->geo.y + sy;
+	float matrix[9];
+	enum wl_output_transform transform =
+		wlr_output_transform_invert(surface->current.transform);
+	struct wlr_box box;
+	memcpy(&box, &layer_surface->geo, sizeof(struct wlr_box));
+	wlr_matrix_project_box(matrix, &box, transform, 0,
+		output->transform_matrix);
+	wlr_render_texture_with_matrix(layer_surface->server->renderer,
+			texture, matrix, 1);
+	// Hack because I'm too lazy to fish through a new rdata struct
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	wlr_surface_send_frame_done(surface, &now);
+}
+
+static void render_layer(
+		struct wio_output *output, struct wl_list *layer_surfaces) {
+	struct wio_layer_surface *layer_surface;
+	wl_list_for_each(layer_surface, layer_surfaces, link) {
+		struct wlr_layer_surface_v1 *wlr_layer_surface_v1 =
+			layer_surface->layer_surface;
+		wlr_surface_for_each_surface(wlr_layer_surface_v1->surface,
+			render_layer_surface, layer_surface);
+	}
+}
+
 static void output_frame(struct wl_listener *listener, void *data) {
 	struct wio_output *output = wl_container_of(listener, output, frame);
 	struct wio_server *server = output->server;
@@ -234,6 +280,9 @@ static void output_frame(struct wl_listener *listener, void *data) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	wlr_renderer_begin(renderer, wlr_output->width, wlr_output->height);
 	wlr_renderer_clear(renderer, background);
+
+	render_layer(output, &output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND]);
+	render_layer(output, &output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM]);
 
 	struct wio_view *view;
 	wl_list_for_each_reverse(view, &server->views, link) {
@@ -273,9 +322,13 @@ static void output_frame(struct wl_listener *listener, void *data) {
 		break;
 	}
 
+	render_layer(output, &output->layers[ZWLR_LAYER_SHELL_V1_LAYER_TOP]);
+
 	if (server->menu.x != -1 && server->menu.y != -1) {
 		render_menu(output);
 	}
+
+	render_layer(output, &output->layers[ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY]);
 
 	wlr_output_render_software_cursors(wlr_output, NULL);
 	wlr_renderer_end(renderer);
@@ -287,13 +340,18 @@ void server_new_output(struct wl_listener *listener, void *data) {
 		wl_container_of(listener, server, new_output);
 	struct wlr_output *wlr_output = data;
 
-
 	struct wio_output *output = calloc(1, sizeof(struct wio_output));
 	output->wlr_output = wlr_output;
 	output->server = server;
 	output->frame.notify = output_frame;
 	wl_signal_add(&wlr_output->events.frame, &output->frame);
 	wl_list_insert(&server->outputs, &output->link);
+	wlr_output->data = output;
+
+	wl_list_init(&output->layers[0]);
+	wl_list_init(&output->layers[1]);
+	wl_list_init(&output->layers[2]);
+	wl_list_init(&output->layers[3]);
 
 	struct wio_output_config *_config, *config = NULL;
 	wl_list_for_each(_config, &server->output_configs, link) {

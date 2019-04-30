@@ -42,6 +42,7 @@ struct wio_server {
 	struct wlr_seat *seat;
 	struct wlr_xcursor_manager *cursor_mgr;
 	struct wlr_xdg_shell *xdg_shell;
+	struct wlr_layer_shell_v1 *layer_shell;
 
 	struct wl_list outputs;
 	struct wl_list output_configs;
@@ -61,6 +62,7 @@ struct wio_server {
 	struct wl_listener request_cursor;
 
 	struct wl_listener new_xdg_surface;
+	struct wl_listener new_layer_surface;
 
 	struct {
 		int x, y;
@@ -83,6 +85,7 @@ struct wio_output {
 
 	struct wio_server *server;
 	struct wlr_output *wlr_output;
+	struct wl_list layers[4];
 
 	struct wl_listener frame;
 };

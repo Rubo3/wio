@@ -47,6 +47,7 @@ subdir('protocols')
 
 wio_sources = files(
 	'main.c',
+	'layers.c',
 	'input.c',
 	'output.c',
 	'view.c',
