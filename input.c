@@ -320,9 +320,7 @@ static void handle_button_internal(
 				view_begin_interactive(view, surface, sx, sy,
 						"bottom_right_corner", INPUT_STATE_RESIZE_START);
 			} else {
-				server->input_state = INPUT_STATE_NONE;
-				wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
-						"left_ptr", server->cursor);
+				view_end_interactive(server);
 			}
 		}
 		break;
@@ -387,8 +385,8 @@ static void handle_button_internal(
 					server->cursor->x, server->cursor->y, &surface, &sx, &sy);
 			if (view != NULL) {
 				wlr_xdg_toplevel_send_close(view->xdg_surface);
-				view_end_interactive(server);
 			}
+			view_end_interactive(server);
 		}
 		break;
 	default:
