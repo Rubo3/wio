@@ -7,6 +7,15 @@ This software is incomplete. Notably missing is a Rio-esque FUSE filesystem and
 Rio's built-in command line (we depend on an external, tty-style terminal
 emulator).
 
+## Installation
+
+To build and install wio:
+
+    git clone https://github.com/swaywm/wlroots.git subprojects/wlroots
+    meson build
+    cd build
+    ninja install
+
 ## Basic principles
 
 Wio uses [wlroots](https://github.com/swaywm/wlroots) to run a simple Wayland
