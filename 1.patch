@@ -1,0 +1,44 @@
+From: Leon Plickat <leonhenrik.plickat@stud.uni-goettingen.de>
+To: <~sircmpwn/wio@lists.sr.ht>
+CC: Leon Plickat <leonhenrik.plickat@stud.uni-goettingen.de>
+Subject: [PATCH 2/3] Selection when spawning new view is now representative
+Date: Wed, 12 Jun 2019 01:15:11 +0200
+Message-ID: <20190611231512.4173-2-leonhenrik.plickat@stud.uni-goettingen.de>
+X-Mailer: git-send-email 2.22.0
+In-Reply-To: <20190611231512.4173-1-leonhenrik.plickat@stud.uni-goettingen.de>
+References: <20190611231512.4173-1-leonhenrik.plickat@stud.uni-goettingen.de>
+MIME-Version: 1.0
+Content-Type: text/plain
+X-Originating-IP: [134.76.63.32]
+X-ClientProxiedBy: EXCMBX-02.um.gwdg.de (134.76.9.217) To EXCMBX-04.um.gwdg.de
+ (134.76.9.219)
+X-Virus-Scanned: (clean) by clamav
+Content-Transfer-Encoding: quoted-printable
+
+The new view was spawned to far in the x and y directions compared to
+the selection outline by exactly the size of the window border. I decided
+to move the new view instead of the selection as I think the selection
+looks good placement-wise in relation to the pointer.
+---
+ input.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/input.c b/input.c
+index 40c4d9e..99d1b4b 100644
+--- a/input.c
++++ b/input.c
+@@ -205,8 +205,8 @@ static void view_end_interactive(struct wio_server *s=
+erver) {
+ }
+=20
+ static void new_view(struct wio_server *server) {
+-	int x1 =3D server->interactive.sx, x2 =3D server->cursor->x;
+-	int y1 =3D server->interactive.sy, y2 =3D server->cursor->y;
++	int x1 =3D server->interactive.sx - window_border, x2 =3D server->curso=
+r->x - window_border;
++	int y1 =3D server->interactive.sy - window_border, y2 =3D server->curso=
+r->y - window_border;
+ 	if (x2 < x1) {
+ 		int _ =3D x1;
+ 		x1 =3D x2;
+--=20

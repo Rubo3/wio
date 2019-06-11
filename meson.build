@@ -62,7 +62,6 @@ executable(
 		math,
 		server_protos,
 		wayland_server,
-		wlroots,
 		xkbcommon,
 	],
 	install: true
