@@ -205,8 +205,8 @@ static void view_end_interactive(struct wio_server *server) {
 }
 
 static void new_view(struct wio_server *server) {
-	int x1 = server->interactive.sx, x2 = server->cursor->x;
-	int y1 = server->interactive.sy, y2 = server->cursor->y;
+	int x1 = server->interactive.sx - window_border, x2 = server->cursor->x - window_border;
+	int y1 = server->interactive.sy - window_border, y2 = server->cursor->y - window_border;
 	if (x2 < x1) {
 		int _ = x1;
 		x1 = x2;
