@@ -193,7 +193,7 @@ static void view_begin_interactive(struct wio_view *view,
 	view->server->interactive.sy = (int)sy;
 	view->server->input_state = state;
 	wlr_xcursor_manager_set_cursor_image(view->server->cursor_mgr,
-			"grabbing", view->server->cursor);
+			cursor, view->server->cursor);
 }
 
 static void view_end_interactive(struct wio_server *server) {
