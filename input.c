@@ -205,8 +205,8 @@ static void view_end_interactive(struct wio_server *server) {
 }
 
 static void new_view(struct wio_server *server) {
-	int x1 = server->interactive.sx - window_border, x2 = server->cursor->x - window_border;
-	int y1 = server->interactive.sy - window_border, y2 = server->cursor->y - window_border;
+	int x1 = server->interactive.sx, x2 = server->cursor->x;
+	int y1 = server->interactive.sy, y2 = server->cursor->y;
 	if (x2 < x1) {
 		int _ = x1;
 		x1 = x2;
@@ -218,8 +218,8 @@ static void new_view(struct wio_server *server) {
 		y2 = _;
 	}
 	struct wio_new_view *view = calloc(1, sizeof(struct wio_new_view));
-	view->box.x = x1 + window_border;
-	view->box.y = y1 + window_border;
+	view->box.x = x1;
+	view->box.y = y1;
 	view->box.width = x2 - x1;
 	view->box.height = y2 - y1;
 	int fd[2];
@@ -345,7 +345,7 @@ static void handle_button_internal(
 			y2 = _;
 		}
 		wio_view_move(server->interactive.view,
-				x1 + window_border, y1 + window_border);
+				x1, y1);
 		uint32_t width = x2 - x1, height = y2 - y1;
 		if (width < 100) {
 			width = 100;
