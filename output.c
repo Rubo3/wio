@@ -172,9 +172,12 @@ static void render_menu(struct wio_output *output) {
 
 static void render_view_border(struct wlr_renderer *renderer,
 		struct wio_output *output, struct wio_view *view,
-		int x, int y, int width, int height) {
+		int x, int y, int width, int height,
+		int selection) {
 	float color[4];
-	if (!view || view->xdg_surface->toplevel->current.activated) {
+	if (selection) {
+		memcpy(color, selection_box, sizeof(color));
+	} else if (!view || view->xdg_surface->toplevel->current.activated) {
 		memcpy(color, active_border, sizeof(color));
 	} else {
 		memcpy(color, inactive_border, sizeof(color));
@@ -298,7 +301,8 @@ static void output_frame(struct wl_listener *listener, void *data) {
 
 		render_view_border(renderer, output, view, view->x, view->y,
 				view->xdg_surface->surface->current.width,
-				view->xdg_surface->surface->current.height);
+				view->xdg_surface->surface->current.height,
+				0);
 		wlr_xdg_surface_for_each_surface(view->xdg_surface,
 				render_surface, &rdata);
 	}
@@ -309,14 +313,16 @@ static void output_frame(struct wl_listener *listener, void *data) {
 			server->cursor->x - server->interactive.sx,
 			server->cursor->y - server->interactive.sy,
 			view->xdg_surface->surface->current.width,
-			view->xdg_surface->surface->current.height);
+			view->xdg_surface->surface->current.height,
+			1);
 		break;
 	case INPUT_STATE_NEW_END:
 	case INPUT_STATE_RESIZE_END:
 		render_view_border(renderer, output, NULL,
 			server->interactive.sx, server->interactive.sy,
 			server->cursor->x - server->interactive.sx,
-			server->cursor->y - server->interactive.sy);
+			server->cursor->y - server->interactive.sy,
+			1);
 		break;
 	default:
 		break;

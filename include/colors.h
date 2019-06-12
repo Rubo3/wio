@@ -5,6 +5,10 @@ static const float background[4] = {
 	0x77 / 255.0f, 0x77 / 255.0f, 0x77 / 255.0f, 1.0f,
 };
 
+static const float selection_box[4] = {
+	0xFF / 255.0f, 0x0 / 255.0f, 0x0 / 255.0f, 1.0f,
+};
+
 static const float active_border[4] = {
 	0x50 / 255.0f, 0xA1 / 255.0f, 0xAD / 255.0f, 1.0f,
 };
