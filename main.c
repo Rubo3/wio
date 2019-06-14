@@ -14,7 +14,6 @@
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_export_dmabuf_v1.h>
 #include <wlr/types/wlr_gamma_control_v1.h>
-#include <wlr/types/wlr_gamma_control.h>
 #include <wlr/types/wlr_gtk_primary_selection.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_primary_selection_v1.h>
@@ -165,7 +164,6 @@ int main(int argc, char **argv) {
 	wlr_data_control_manager_v1_create(server.wl_display);
 	wlr_primary_selection_v1_device_manager_create(server.wl_display);
 
-	wlr_gamma_control_manager_create(server.wl_display);
 	wlr_gamma_control_manager_v1_create(server.wl_display);
 	wlr_gtk_primary_selection_device_manager_create(server.wl_display);
 
