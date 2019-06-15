@@ -242,6 +242,12 @@ static void new_view(struct wio_server *server) {
 	view->box.y = y1;
 	view->box.width = x2 - x1;
 	view->box.height = y2 - y1;
+	if (view->box.width < 100){
+		view->box.width = 100;
+	}
+	if (view->box.height < 100){
+		view->box.height = 100;
+	}
 	int fd[2];
 	if (pipe(fd) != 0) {
 		wlr_log(WLR_ERROR, "Unable to create pipe for fork");
