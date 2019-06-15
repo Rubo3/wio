@@ -23,6 +23,7 @@ static void keyboard_handle_modifiers(
 		&keyboard->device->keyboard->modifiers);
 }
 
+static void view_end_interactive(struct wio_server *server);
 static void keyboard_handle_key(
 		struct wl_listener *listener, void *data) {
 	struct wio_keyboard *keyboard =
@@ -30,6 +31,25 @@ static void keyboard_handle_key(
 	struct wio_server *server = keyboard->server;
 	struct wlr_event_keyboard_key *event = data;
 	struct wlr_seat *seat = server->seat;
+	xkb_keycode_t keycode = event->keycode + 8;
+	const xkb_keysym_t *syms;
+	int nsyms = xkb_state_key_get_syms(
+		keyboard->device->keyboard->xkb_state,
+		keycode, &syms);
+
+	for (int i = 0; i < nsyms; i++) {
+		if (syms[i] == XKB_KEY_Escape) {
+			switch (server->input_state) {
+			case INPUT_STATE_NONE:
+			case INPUT_STATE_MENU:
+				break;
+			default:
+				view_end_interactive(server);
+				return;
+			}
+		}
+	}
+
 	wlr_seat_set_keyboard(seat, keyboard->device);
 	wlr_seat_keyboard_notify_key(seat, event->time_msec,
 		event->keycode, event->state);
