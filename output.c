@@ -306,9 +306,41 @@ static void output_frame(struct wl_listener *listener, void *data) {
 		wlr_xdg_surface_for_each_surface(view->xdg_surface,
 				render_surface, &rdata);
 	}
+	view = server->interactive.view;
 	switch (server->input_state) {
-	case INPUT_STATE_MOVE:;
-		struct wio_view *view = server->interactive.view;
+	case INPUT_STATE_BORDER_DRAG_TOP:
+		render_view_border(renderer, output, view,
+			view->x,
+			server->cursor->y,
+			view->xdg_surface->surface->current.width,
+			view->xdg_surface->surface->current.height - (server->cursor->y - server->interactive.sy),
+			1);
+		break;
+	case INPUT_STATE_BORDER_DRAG_LEFT:
+		render_view_border(renderer, output, view,
+			server->cursor->x,
+			view->y,
+			view->xdg_surface->surface->current.width - (server->cursor->x - server->interactive.sx),
+			view->xdg_surface->surface->current.height,
+			1);
+		break;
+	case INPUT_STATE_BORDER_DRAG_BOTTOM:
+		render_view_border(renderer, output, view,
+			view->x,
+			view->y,
+			view->xdg_surface->surface->current.width,
+			server->cursor->y - server->interactive.sy,
+			1);
+		break;
+	case INPUT_STATE_BORDER_DRAG_RIGHT:
+		render_view_border(renderer, output, view,
+			view->x,
+			view->y,
+			server->cursor->x - server->interactive.sx,
+			view->xdg_surface->surface->current.height,
+			1);
+		break;
+	case INPUT_STATE_MOVE:
 		render_view_border(renderer, output, view,
 			server->cursor->x - server->interactive.sx,
 			server->cursor->y - server->interactive.sy,

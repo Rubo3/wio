@@ -134,6 +134,22 @@ static void process_cursor_motion(struct wio_server *server, uint32_t time) {
 			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
 					"top_left_corner", server->cursor);
 			break;
+		case INPUT_STATE_BORDER_DRAG_TOP:
+			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+					"top_side", server->cursor);
+			break;
+		case INPUT_STATE_BORDER_DRAG_RIGHT:
+			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+					"right_side", server->cursor);
+			break;
+		case INPUT_STATE_BORDER_DRAG_BOTTOM:
+			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+					"bottom_side", server->cursor);
+			break;
+		case INPUT_STATE_BORDER_DRAG_LEFT:
+			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+					"left_side", server->cursor);
+			break;
 		case INPUT_STATE_RESIZE_END:
 		case INPUT_STATE_NEW_END:
 			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
@@ -296,6 +312,69 @@ static void new_view(struct wio_server *server) {
 	}
 }
 
+bool wio_border_drag(
+		struct wio_server *server, struct wlr_event_pointer_button *event) {
+	if (event->button != BTN_RIGHT) {
+		return false;
+	}
+	struct wlr_box border_box = {
+		.x = 0, .y = 0,
+		.width = 0, .height = 0,
+	};
+	struct wio_view *view;
+	struct wlr_surface *surface = NULL;
+	wl_list_for_each(view, &server->views, link) {
+		// Top border
+		border_box.height = window_border;
+		border_box.width = view->xdg_surface->surface->current.width;
+		border_box.x = view->x;
+		border_box.y = view->y - window_border;
+		if (wlr_box_contains_point(
+					&border_box, server->cursor->x, server->cursor->y)) {
+			view_begin_interactive(view, surface, view->x, view->y,
+					"top_side", INPUT_STATE_BORDER_DRAG_TOP);
+			return true;
+		}
+
+		// Right border
+		border_box.height = view->xdg_surface->surface->current.height;
+		border_box.width = window_border;
+		border_box.x = view->x + view->xdg_surface->surface->current.width;
+		border_box.y = view->y;
+		if (wlr_box_contains_point(
+					&border_box, server->cursor->x, server->cursor->y)) {
+			view_begin_interactive(view, surface, view->x, view->y,
+					"right_side", INPUT_STATE_BORDER_DRAG_RIGHT);
+			return true;
+		}
+
+		// Bottom border
+		border_box.height = window_border;
+		border_box.width = view->xdg_surface->surface->current.width;
+		border_box.x = view->x;
+		border_box.y = view->y + view->xdg_surface->surface->current.height;
+		if (wlr_box_contains_point(
+					&border_box, server->cursor->x, server->cursor->y)) {
+			view_begin_interactive(view, surface, view->x, view->y,
+					"bottom_side", INPUT_STATE_BORDER_DRAG_BOTTOM);
+			return true;
+		}
+
+		// Left border
+		border_box.height = view->xdg_surface->surface->current.height;
+		border_box.width = window_border;
+		border_box.x = view->x - window_border;
+		border_box.y = view->y;
+		if (wlr_box_contains_point(
+					&border_box, server->cursor->x, server->cursor->y)) {
+			view_begin_interactive(view, surface, view->x, view->y,
+					"left_side", INPUT_STATE_BORDER_DRAG_LEFT);
+			return true;
+		}
+	}
+	return false;
+}
+
 static void handle_button_internal(
 		struct wio_server *server, struct wlr_event_pointer_button *event) {
 	// TODO: open menu if the client doesn't handle the button press
@@ -305,6 +384,7 @@ static void handle_button_internal(
 		.width = server->menu.width, .height = server->menu.height,
 	};
 	int x1, x2, y1, y2;
+	uint32_t width, height;
 	switch (server->input_state) {
 	case INPUT_STATE_NONE:
 		if (event->state == WLR_BUTTON_PRESSED && event->button == BTN_RIGHT) {
@@ -357,6 +437,84 @@ static void handle_button_internal(
 			server->input_state = INPUT_STATE_RESIZE_END;
 		}
 		break;
+	case INPUT_STATE_BORDER_DRAG_TOP:
+		y1 = server->interactive.view->y + server->interactive.view->xdg_surface->surface->current.height;
+		y2 = server->cursor->y;
+		x1 = server->interactive.view->x;
+		if (y2 < y1) {
+			int _ = y1;
+			y1 = y2;
+			y2 = _;
+		}
+		wio_view_move(server->interactive.view,
+				x1, y1);
+		width = server->interactive.view->xdg_surface->surface->current.width;
+		height = y2 - y1;
+		if (height < 100) {
+			height = 100;
+		}
+		wlr_xdg_toplevel_set_size(
+				server->interactive.view->xdg_surface, width, height);
+		view_end_interactive(server);
+		break;
+	case INPUT_STATE_BORDER_DRAG_LEFT:
+		x1 = server->interactive.view->x + server->interactive.view->xdg_surface->surface->current.width;
+		x2 = server->cursor->x;
+		y1 = server->interactive.view->y;
+		if (x2 < x1) {
+			int _ = x1;
+			x1 = x2;
+			x2 = _;
+		}
+		wio_view_move(server->interactive.view,
+				x1, y1);
+		width = x2 - x1;
+		height = server->interactive.view->xdg_surface->surface->current.height;
+		if (width < 100) {
+			width = 100;
+		}
+		wlr_xdg_toplevel_set_size(
+				server->interactive.view->xdg_surface, width, height);
+		view_end_interactive(server);
+		break;
+	case INPUT_STATE_BORDER_DRAG_BOTTOM:
+		x1 = server->interactive.view->x;
+		y1 = server->interactive.view->y, y2 = server->cursor->y;
+		if (y2 < y1) {
+			int _ = y1;
+			y1 = y2;
+			y2 = _;
+		}
+		wio_view_move(server->interactive.view,
+				x1, y1);
+		width = server->interactive.view->xdg_surface->surface->current.width;
+		height = y2 - y1;
+		if (width < 100) {
+			width = 100;
+		}
+		wlr_xdg_toplevel_set_size(
+				server->interactive.view->xdg_surface, width, height);
+		view_end_interactive(server);
+		break;
+	case INPUT_STATE_BORDER_DRAG_RIGHT:
+		x1 = server->interactive.view->x, x2 = server->cursor->x;
+		y1 = server->interactive.view->y;
+		if (x2 < x1) {
+			int _ = x1;
+			x1 = x2;
+			x2 = _;
+		}
+		wio_view_move(server->interactive.view,
+				x1, y1);
+		width = x2 - x1;
+		height = server->interactive.view->xdg_surface->surface->current.height;
+		if (width < 100) {
+			width = 100;
+		}
+		wlr_xdg_toplevel_set_size(
+				server->interactive.view->xdg_surface, width, height);
+		view_end_interactive(server);
+		break;
 	case INPUT_STATE_RESIZE_END:
 		x1 = server->interactive.sx, x2 = server->cursor->x;
 		y1 = server->interactive.sy, y2 = server->cursor->y;
@@ -372,7 +530,7 @@ static void handle_button_internal(
 		}
 		wio_view_move(server->interactive.view,
 				x1, y1);
-		uint32_t width = x2 - x1, height = y2 - y1;
+		width = x2 - x1, height = y2 - y1;
 		if (width < 100) {
 			width = 100;
 		}
@@ -429,6 +587,9 @@ void server_cursor_button(struct wl_listener *listener, void *data) {
 	struct wlr_surface *surface = NULL;
 	struct wio_view *view = wio_view_at(
 			server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
+	if (wio_border_drag(server, event)) {
+		return;
+	}
 	if (server->input_state == INPUT_STATE_NONE && view) {
 		wio_view_focus(view, surface);
 		wlr_seat_pointer_notify_button(server->seat,
