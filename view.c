@@ -133,7 +133,7 @@ struct wio_view *wio_view_at(struct wio_server *server, double lx, double ly,
 	wl_list_for_each(view, &server->views, link) {
 		// Surface
 		if (view_at(view, lx, ly, surface, sx, sy)) {
-			view_area = VIEW_AREA_SURFACE;
+			*view_area = VIEW_AREA_SURFACE;
 			return view;
 		}
 		// Top border
