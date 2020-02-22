@@ -275,7 +275,7 @@ void server_new_layer_surface(struct wl_listener *listener, void *data) {
 	// TODO: popups
 
 	// TODO: Listen for subsurfaces
-	wl_list_insert(&output->layers[layer_surface->layer], &wio_surface->link);
+	wl_list_insert(&output->layers[layer_surface->client_pending.layer], &wio_surface->link);
 	// Temporarily set the layer's current state to client_pending
 	// So that we can easily arrange it
 	struct wlr_layer_surface_v1_state old_state = layer_surface->current;
