@@ -1,0 +1,869 @@
+From: Leonid Bobrov <goleo@disroot.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=disroot.org; s=mail;
+	t=1592466140; bh=l6tQMYSNvNow3fyhjCtDwQtszlKQwc3BMCfHj1GUAy8=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=jwDvcMF/BvNP/7IDj/SIADOTClWIPK7XHriz/evMgVzi0yZ0BuTLAqFEXbziYd+Pt
+	 POqXgnOUa1F1QCCW2YpAijz++nhNeYEAZZtgKj7yn6zJ9a8D0dldYj3EhaGJjbOAwn
+	 ntptgSPkRK8as66GeZRRwKCOpkPjiIJvSNrxw8Cv98zszeNXCsd5co9+y4ZDT4vE0M
+	 T4a4KHW9z0zSjXvpBFGpecG9eGLSvdmkDXGCQckH7XCXppliwJXV9jvL1coc2C0JlG
+	 aIOx8X0W5Pw1etnPGyyTfQ+WfKBrkZwncNgdr0gFN8PYo057n2peLyvDouBBXdR2Li
+	 /oHgu/rHNzMhw==
+To: ~sircmpwn/wio@lists.sr.ht,
+	Leon Plickat <leonhenrik.plickat@stud.uni-goetttingen.de>
+Cc: Leonid Bobrov <goleo@disroot.org>
+Subject: [PATCH 02/11] Simplify code for resizing views
+Date: Thu, 18 Jun 2020 10:39:45 +0300
+Message-Id: <20200618073954.189606-3-goleo@disroot.org>
+In-Reply-To: <20200618073954.189606-1-goleo@disroot.org>
+References: <20200618073954.189606-1-goleo@disroot.org>
+Mime-Version: 1.0
+Content-Transfer-Encoding: quoted-printable
+
+And it still behaves worse than Rio...
+
+Also I made New and Resize commands behave like in Rio.
+---
+ include/colors.h |   4 +
+ include/server.h |   9 +-
+ include/view.h   |  19 ++--
+ input.c          | 220 ++++++-----------------------------------------
+ output.c         | 149 +++-----------------------------
+ view.c           | 188 ++++++++++++++++++++++++++++++++--------
+ 6 files changed, 210 insertions(+), 379 deletions(-)
+
+diff --git a/include/colors.h b/include/colors.h
+index f8d40dc..b1f83d3 100644
+--- a/include/colors.h
++++ b/include/colors.h
+@@ -29,4 +29,8 @@ static const float menu_border[4] =3D {
+ 	0x78 / 255.0f, 0xAD / 255.0f, 0x84 / 255.0f, 1.0f,
+ };
+=20
++static const float surface[4] =3D {
++	0xFF / 255.0f, 0xFF / 255.0f, 0xFF / 255.0f, 1.0f,
++};
++
+ #endif
+diff --git a/include/server.h b/include/server.h
+index f49b2dd..b6eaaa6 100644
+--- a/include/server.h
++++ b/include/server.h
+@@ -26,14 +26,7 @@ enum wio_input_state {
+ 	INPUT_STATE_RESIZE_SELECT,
+ 	INPUT_STATE_RESIZE_START,
+ 	INPUT_STATE_RESIZE_END,
+-	INPUT_STATE_BORDER_DRAG_TOP_RIGHT,
+-	INPUT_STATE_BORDER_DRAG_TOP_LEFT,
+-	INPUT_STATE_BORDER_DRAG_TOP,
+-	INPUT_STATE_BORDER_DRAG_BOTTOM_RIGHT,
+-	INPUT_STATE_BORDER_DRAG_BOTTOM_LEFT,
+-	INPUT_STATE_BORDER_DRAG_BOTTOM,
+-	INPUT_STATE_BORDER_DRAG_RIGHT,
+-	INPUT_STATE_BORDER_DRAG_LEFT,
++	INPUT_STATE_BORDER_DRAG,
+ 	INPUT_STATE_DELETE_SELECT,
+ 	INPUT_STATE_HIDE_SELECT,
+ };
+diff --git a/include/view.h b/include/view.h
+index e7631de..e1a8bbf 100644
+--- a/include/view.h
++++ b/include/view.h
+@@ -5,6 +5,9 @@
+=20
+ #define MINWIDTH 100
+ #define MINHEIGHT 100
++// TODO: scale
++#define less_swap1(A, B) { if (A < B) { int C =3D A; A =3D B + window_bo=
+rder * 2; B =3D C + window_border * 2; } }
++#define less_swap2(A, B) { if (A < B) { int C =3D A; A =3D B - window_bo=
+rder * 2; B =3D C - window_border * 2; } }
+=20
+ struct wio_server;
+=20
+@@ -19,17 +22,21 @@ struct wio_view {
+ };
+=20
+ enum wio_view_area {
+-	VIEW_AREA_NONE =3D 0,
+-	VIEW_AREA_SURFACE =3D 1,
+-	VIEW_AREA_BORDER_TOP =3D 2,
+-	VIEW_AREA_BORDER_BOTTOM =3D 4,
+-	VIEW_AREA_BORDER_RIGHT =3D 8,
+-	VIEW_AREA_BORDER_LEFT =3D 16,
++	VIEW_AREA_BORDER_TOP_LEFT =3D 0,
++	VIEW_AREA_BORDER_TOP,
++	VIEW_AREA_BORDER_TOP_RIGHT,
++	VIEW_AREA_BORDER_LEFT,
++	VIEW_AREA_SURFACE,
++	VIEW_AREA_BORDER_RIGHT,
++	VIEW_AREA_BORDER_BOTTOM_LEFT,
++	VIEW_AREA_BORDER_BOTTOM,
++	VIEW_AREA_BORDER_BOTTOM_RIGHT,
+ };
+=20
+ void server_new_xdg_surface(struct wl_listener *listener, void *data);
+=20
+ void wio_view_focus(struct wio_view *view, struct wlr_surface *surface);
++struct wlr_box which_box(struct wio_server *server);
+ struct wio_view *wio_view_at(struct wio_server *server, double lx, doubl=
+e ly,
+ 		struct wlr_surface **surface, double *sx, double *sy);
+ void wio_view_move(struct wio_view *view, int x, int y);
+diff --git a/input.c b/input.c
+index 84c16b0..8f7b31e 100644
+--- a/input.c
++++ b/input.c
+@@ -14,9 +14,12 @@
+ #include "server.h"
+ #include "view.h"
+=20
+-// TODO: scale
+-#define less_swap1(A, B) { if (A < B) { int C =3D A; A =3D B + window_bo=
+rder * 2; B =3D C + window_border * 2; } }
+-#define less_swap2(A, B) { if (A < B) { int C =3D A; A =3D B - window_bo=
+rder * 2; B =3D C - window_border * 2; } }
++static char *corners[9] =3D {
++	"top_left_corner", "top_side", "top_right_corner",
++	"left_side", NULL, "right_side",
++	"bottom_left_corner", "bottom_side", "bottom_right_corner",
++};
++static char *corner =3D NULL;
+=20
+ static void keyboard_handle_modifiers(
+ 		struct wl_listener *listener, void *data) {
+@@ -118,8 +121,10 @@ static void process_cursor_motion(struct wio_server =
+*server, uint32_t time) {
+ 	double sx, sy;
+ 	struct wlr_seat *seat =3D server->seat;
+ 	struct wlr_surface *surface =3D NULL;
+-	struct wio_view *view =3D wio_view_at(
+-			server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
++	struct wio_view *view =3D NULL;
++	if (server->input_state !=3D INPUT_STATE_BORDER_DRAG) {
++		view =3D wio_view_at(server, server->cursor->x, server->cursor->y, &su=
+rface, &sx, &sy);
++	}
+ 	if (!view) {
+ 		switch (server->input_state) {
+ 		case INPUT_STATE_MOVE_SELECT:
+@@ -133,42 +138,20 @@ static void process_cursor_motion(struct wio_server=
+ *server, uint32_t time) {
+ 			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+ 					"grabbing", server->cursor);
+ 			break;
+-		case INPUT_STATE_BORDER_DRAG_TOP_RIGHT:
++		case INPUT_STATE_BORDER_DRAG:
+ 			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+-					"top_right_corner", server->cursor);
++					corner, server->cursor);
+ 			break;
+ 		case INPUT_STATE_RESIZE_START:
+ 		case INPUT_STATE_NEW_START:
+-		case INPUT_STATE_BORDER_DRAG_TOP_LEFT:
+ 			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+ 					"top_left_corner", server->cursor);
+ 			break;
+-		case INPUT_STATE_BORDER_DRAG_TOP:
+-			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+-					"top_side", server->cursor);
+-			break;
+ 		case INPUT_STATE_RESIZE_END:
+ 		case INPUT_STATE_NEW_END:
+-		case INPUT_STATE_BORDER_DRAG_BOTTOM_RIGHT:
+ 			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+ 					"bottom_right_corner", server->cursor);
+ 			break;
+-		case INPUT_STATE_BORDER_DRAG_BOTTOM_LEFT:
+-			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+-					"bottom_left_corner", server->cursor);
+-			break;
+-		case INPUT_STATE_BORDER_DRAG_BOTTOM:
+-			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+-					"bottom_side", server->cursor);
+-			break;
+-		case INPUT_STATE_BORDER_DRAG_RIGHT:
+-			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+-					"right_side", server->cursor);
+-			break;
+-		case INPUT_STATE_BORDER_DRAG_LEFT:
+-			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+-					"left_side", server->cursor);
+-			break;
+ 		default:
+ 			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+ 					"left_ptr", server->cursor);
+@@ -260,19 +243,10 @@ static void new_view(struct wio_server *server) {
+ 	less_swap2(x2, x1);
+ 	less_swap2(y2, y1);
+ 	int width =3D x2 - x1, height =3D y2 - y1;
+-	struct wio_new_view *view =3D calloc(1, sizeof(struct wio_new_view));
+-	if (width < MINWIDTH && (x1 - server->interactive.sx) < 0) {
+-		x1 -=3D MINWIDTH - width;
+-	}
+-	if (height < MINHEIGHT && (y1 - server->interactive.sy) < 0) {
+-		y1 -=3D MINHEIGHT - height;
+-	}
+-	if (width < MINWIDTH) {
+-		width =3D MINWIDTH;
+-	}
+-	if (height < MINHEIGHT) {
+-		height =3D MINHEIGHT;
++	if (width < MINWIDTH || height < MINHEIGHT) {
++		return;
+ 	}
++	struct wio_new_view *view =3D calloc(1, sizeof(struct wio_new_view));
+ 	view->box.x =3D x1;
+ 	view->box.y =3D y1;
+ 	view->box.width =3D width;
+@@ -333,6 +307,7 @@ static void handle_button_internal(
+ 		.x =3D server->menu.x, .y =3D server->menu.y,
+ 		.width =3D server->menu.width, .height =3D server->menu.height,
+ 	};
++	struct wlr_box box;
+ 	int x1, x2, y1, y2;
+ 	uint32_t width, height;
+ 	switch (server->input_state) {
+@@ -387,119 +362,9 @@ static void handle_button_internal(
+ 			server->input_state =3D INPUT_STATE_RESIZE_END;
+ 		}
+ 		break;
+-	case INPUT_STATE_BORDER_DRAG_TOP_RIGHT:
+-		y1 =3D server->cursor->y;
+-		y2 =3D server->interactive.view->y + server->interactive.view->xdg_sur=
+face->surface->current.height;
+-		x1 =3D server->interactive.view->x;
+-		x2 =3D server->cursor->x;
+-		less_swap1(y2, y1);
+-		less_swap2(x2, x1);
+-		width =3D x2 - x1;
+-		if (width < MINWIDTH && (x1 - server->interactive.view->x) < 0) {
+-			x1 -=3D MINWIDTH - width;
+-		}
+-		height =3D y2 - y1;
+-		if (height < MINHEIGHT
+-			&& (y1 - server->interactive.view->y) < (server->interactive.view->xd=
+g_surface->surface->current.height)) {
+-			y1 -=3D MINHEIGHT - height;
+-		}
+-		goto Done;
+-	case INPUT_STATE_BORDER_DRAG_TOP_LEFT:
+-		y1 =3D server->cursor->y;
+-		y2 =3D server->interactive.view->y + server->interactive.view->xdg_sur=
+face->surface->current.height;
+-		x1 =3D server->cursor->x;
+-		x2 =3D server->interactive.view->x + server->interactive.view->xdg_sur=
+face->surface->current.width;
+-		less_swap1(y2, y1);
+-		less_swap1(x2, x1);
+-		width =3D x2 - x1;
+-		if (width < MINWIDTH
+-			&& (x1 - server->interactive.view->x) < (server->interactive.view->xd=
+g_surface->surface->current.width)) {
+-			x1 -=3D MINWIDTH - width;
+-		}
+-		height =3D y2 - y1;
+-		if (height < MINHEIGHT
+-			&& (y1 - server->interactive.view->y) < (server->interactive.view->xd=
+g_surface->surface->current.height)) {
+-			y1 -=3D MINHEIGHT - height;
+-		}
+-		goto Done;
+-	case INPUT_STATE_BORDER_DRAG_TOP:
+-		y1 =3D server->cursor->y;
+-		y2 =3D server->interactive.view->y + server->interactive.view->xdg_sur=
+face->surface->current.height;
+-		x1 =3D server->interactive.view->x;
+-		less_swap1(y2, y1);
+-		width =3D server->interactive.view->xdg_surface->surface->current.widt=
+h;
+-		height =3D y2 - y1;
+-		if (height < MINHEIGHT
+-			&& (y1 - server->interactive.view->y) < (server->interactive.view->xd=
+g_surface->surface->current.height)) {
+-			y1 -=3D MINHEIGHT - height;
+-		}
+-		goto Done;
+-	case INPUT_STATE_BORDER_DRAG_BOTTOM_RIGHT:
+-		x1 =3D server->interactive.view->x;
+-		x2 =3D server->cursor->x;
+-		y1 =3D server->interactive.view->y;
+-		y2 =3D server->cursor->y;
+-		less_swap2(x2, x1);
+-		less_swap2(y2, y1);
+-		width =3D x2 - x1;
+-		if (width < MINWIDTH && (x1 - server->interactive.view->x) < 0) {
+-			x1 -=3D MINWIDTH - width;
+-		}
+-		height =3D y2 - y1;
+-		if (height < MINHEIGHT && (y1 - server->interactive.view->y) < 0) {
+-			y1 -=3D MINHEIGHT - height;
+-		}
+-		goto Done;
+-	case INPUT_STATE_BORDER_DRAG_BOTTOM_LEFT:
+-		x1 =3D server->cursor->x;
+-		x2 =3D server->interactive.view->x + server->interactive.view->xdg_sur=
+face->surface->current.width;
+-		y1 =3D server->interactive.view->y;
+-		y2 =3D server->cursor->y;
+-		less_swap1(x2, x1);
+-		less_swap2(y2, y1);
+-		width =3D x2 - x1;
+-		if (width < MINWIDTH
+-			&& (x1 - server->interactive.view->x) < (server->interactive.view->xd=
+g_surface->surface->current.width)) {
+-			x1 -=3D MINWIDTH - width;
+-		}
+-		height =3D y2 - y1;
+-		if (height < MINHEIGHT && (y1 - server->interactive.view->y) < 0) {
+-			y1 -=3D MINHEIGHT - height;
+-		}
+-		goto Done;
+-	case INPUT_STATE_BORDER_DRAG_BOTTOM:
+-		x1 =3D server->interactive.view->x;
+-		y1 =3D server->interactive.view->y;
+-		y2 =3D server->cursor->y;
+-		less_swap2(y2, y1);
+-		width =3D server->interactive.view->xdg_surface->surface->current.widt=
+h;
+-		height =3D y2 - y1;
+-		if (height < MINHEIGHT && (y1 - server->interactive.view->y) < 0) {
+-			y1 -=3D MINHEIGHT - height;
+-		}
+-		goto Done;
+-	case INPUT_STATE_BORDER_DRAG_RIGHT:
+-		x1 =3D server->interactive.view->x;
+-		x2 =3D server->cursor->x;
+-		y1 =3D server->interactive.view->y;
+-		less_swap2(x2, x1);
+-		width =3D x2 - x1;
+-		if (width < MINWIDTH && (x1 - server->interactive.view->x) < 0) {
+-			x1 -=3D MINWIDTH - width;
+-		}
+-		height =3D server->interactive.view->xdg_surface->surface->current.hei=
+ght;
+-		goto Done;
+-	case INPUT_STATE_BORDER_DRAG_LEFT:
+-		x1 =3D server->cursor->x;
+-		x2 =3D server->interactive.view->x + server->interactive.view->xdg_sur=
+face->surface->current.width;
+-		y1 =3D server->interactive.view->y;
+-		less_swap1(x2, x1);
+-		width =3D x2 - x1;
+-		if (width < MINWIDTH
+-			&& (x1 - server->interactive.view->x) < (server->interactive.view->xd=
+g_surface->surface->current.width)) {
+-			x1 -=3D MINWIDTH - width;
+-		}
+-		height =3D server->interactive.view->xdg_surface->surface->current.hei=
+ght;
++	case INPUT_STATE_BORDER_DRAG:
++		box =3D which_box(server);
++		x1 =3D box.x, y1 =3D box.y, width =3D box.width, height =3D box.height=
+;
+ 		goto Done;
+ 	case INPUT_STATE_RESIZE_END:
+ 		x1 =3D server->interactive.sx, x2 =3D server->cursor->x;
+@@ -507,22 +372,14 @@ static void handle_button_internal(
+ 		less_swap2(x2, x1);
+ 		less_swap2(y2, y1);
+ 		width =3D x2 - x1;
+-		if (width < MINWIDTH && (x1 - server->interactive.sx) < 0) {
+-			x1 -=3D MINWIDTH - width;
+-		}
+ 		height =3D y2 - y1;
+-		if (height < MINHEIGHT && (y1 - server->interactive.sy) < 0) {
+-			y1 -=3D MINHEIGHT - height;
++		if (width < MINWIDTH || height < MINHEIGHT) {
++			view_end_interactive(server);
++			break;
+ 		}
+ 	Done:
+ 		wio_view_move(server->interactive.view,
+ 				x1, y1);
+-		if (width < MINWIDTH) {
+-			width =3D MINWIDTH;
+-		}
+-		if (height < MINHEIGHT) {
+-			height =3D MINHEIGHT;
+-		}
+ 		wlr_xdg_toplevel_set_size(
+ 				server->interactive.view->xdg_surface, width, height);
+ 		view_end_interactive(server);
+@@ -580,37 +437,10 @@ void server_cursor_button(struct wl_listener *liste=
+ner, void *data) {
+ 			wlr_seat_pointer_notify_button(server->seat,
+ 					event->time_msec, event->button, event->state);
+ 			break;
+-		case VIEW_AREA_BORDER_TOP|VIEW_AREA_BORDER_RIGHT:
+-			view_begin_interactive(view, surface, view->x, view->y,
+-					"top_right_corner", INPUT_STATE_BORDER_DRAG_TOP_RIGHT);
+-			break;
+-		case VIEW_AREA_BORDER_TOP|VIEW_AREA_BORDER_LEFT:
+-			view_begin_interactive(view, surface, view->x, view->y,
+-					"top_left_corner", INPUT_STATE_BORDER_DRAG_TOP_LEFT);
+-			break;
+-		case VIEW_AREA_BORDER_TOP:
+-			view_begin_interactive(view, surface, view->x, view->y,
+-					"top_side", INPUT_STATE_BORDER_DRAG_TOP);
+-			break;
+-		case VIEW_AREA_BORDER_BOTTOM|VIEW_AREA_BORDER_RIGHT:
+-			view_begin_interactive(view, surface, view->x, view->y,
+-					"bottom_right_corner", INPUT_STATE_BORDER_DRAG_BOTTOM_RIGHT);
+-			break;
+-		case VIEW_AREA_BORDER_BOTTOM|VIEW_AREA_BORDER_LEFT:
+-			view_begin_interactive(view, surface, view->x, view->y,
+-					"bottom_left_corner", INPUT_STATE_BORDER_DRAG_BOTTOM_LEFT);
+-			break;
+-		case VIEW_AREA_BORDER_BOTTOM:
+-			view_begin_interactive(view, surface, view->x, view->y,
+-					"bottom_side", INPUT_STATE_BORDER_DRAG_BOTTOM);
+-			break;
+-		case VIEW_AREA_BORDER_RIGHT:
+-			view_begin_interactive(view, surface, view->x, view->y,
+-					"right_side", INPUT_STATE_BORDER_DRAG_RIGHT);
+-			break;
+-		case VIEW_AREA_BORDER_LEFT:
++		default:
++			corner =3D corners[view->area];
+ 			view_begin_interactive(view, surface, view->x, view->y,
+-					"left_side", INPUT_STATE_BORDER_DRAG_LEFT);
++					corner, INPUT_STATE_BORDER_DRAG);
+ 			break;
+ 		}
+ 	} else {
+diff --git a/output.c b/output.c
+index 88f827b..3ec64a8 100644
+--- a/output.c
++++ b/output.c
+@@ -272,7 +272,9 @@ static void output_frame(struct wl_listener *listener=
+, void *data) {
+ 	struct wio_output *output =3D wl_container_of(listener, output, frame);
+ 	struct wio_server *server =3D output->server;
+ 	struct wlr_renderer *renderer =3D server->renderer;
+-	int x, y, width, height, scale;
++	struct wlr_box box;
++	int x, y, width, height;
++	float color[4];
+=20
+ 	struct timespec now;
+ 	clock_gettime(CLOCK_MONOTONIC, &now);
+@@ -308,134 +310,11 @@ static void output_frame(struct wl_listener *liste=
+ner, void *data) {
+ 				render_surface, &rdata);
+ 	}
+ 	view =3D server->interactive.view;
+-	scale =3D output->wlr_output->scale;
+ 	switch (server->input_state) {
+-	case INPUT_STATE_BORDER_DRAG_TOP_RIGHT:
+-		x =3D view->x;
+-		y =3D server->cursor->y;
+-		width =3D server->cursor->x - server->interactive.sx;
+-		height =3D view->xdg_surface->surface->current.height - (server->curso=
+r->y - server->interactive.sy);
+-		if (height < MINHEIGHT && height > -MINHEIGHT) {
+-			if (height < 0) {
+-				height *=3D -1;
+-				y -=3D height - window_border * 2 * scale;
+-			} else {
+-				y -=3D MINHEIGHT - height;
+-			}
+-			height =3D MINHEIGHT;
+-		}
+-		if (height < 0) {
+-			height *=3D -1;
+-			y -=3D height - window_border * 2 * scale;
+-		}
+-		goto Done;
+-	case INPUT_STATE_BORDER_DRAG_TOP_LEFT:
+-		x =3D server->cursor->x;
+-		y =3D server->cursor->y;
+-		width =3D view->xdg_surface->surface->current.width - (server->cursor-=
+>x - server->interactive.sx);
+-		height =3D view->xdg_surface->surface->current.height - (server->curso=
+r->y - server->interactive.sy);
+-		if (width < MINWIDTH && width > -MINWIDTH) {
+-			if (width < 0) {
+-				width *=3D -1;
+-				x -=3D width - window_border * 2 * scale;
+-			} else {
+-				x -=3D MINWIDTH - width;
+-			}
+-			width =3D MINWIDTH;
+-		}
+-		if (height < MINHEIGHT && height > -MINHEIGHT) {
+-			if (height < 0) {
+-				height *=3D -1;
+-				y -=3D height - window_border * 2 * scale;
+-			} else {
+-				y -=3D MINHEIGHT - height;
+-			}
+-			height =3D MINHEIGHT;
+-		}
+-		if (width < 0) {
+-			width *=3D -1;
+-			x -=3D width - window_border * 2 * scale;
+-		}
+-		if (height < 0) {
+-			height *=3D -1;
+-			y -=3D height - window_border * 2 * scale;
+-		}
+-		goto Done;
+-	case INPUT_STATE_BORDER_DRAG_TOP:
+-		x =3D view->x;
+-		y =3D server->cursor->y;
+-		width =3D view->xdg_surface->surface->current.width;
+-		height =3D view->xdg_surface->surface->current.height - (server->curso=
+r->y - server->interactive.sy);
+-		if (height < MINHEIGHT && height > -MINHEIGHT) {
+-			if (height < 0) {
+-				height *=3D -1;
+-				y -=3D height - window_border * 2 * scale;
+-			} else {
+-				y -=3D MINHEIGHT - height;
+-			}
+-			height =3D MINHEIGHT;
+-		}
+-		if (height < 0) {
+-			height *=3D -1;
+-			y -=3D height - window_border * 2 * scale;
+-		}
+-		goto Done;
+-	case INPUT_STATE_BORDER_DRAG_BOTTOM_RIGHT:
+-		x =3D view->x;
+-		y =3D view->y;
+-		width =3D server->cursor->x - server->interactive.sx;
+-		height =3D server->cursor->y - server->interactive.sy;
+-		goto Done;
+-	case INPUT_STATE_BORDER_DRAG_BOTTOM_LEFT:
+-		x =3D server->cursor->x;
+-		y =3D view->y;
+-		width =3D view->xdg_surface->surface->current.width - (server->cursor-=
+>x - server->interactive.sx);
+-		height =3D server->cursor->y - server->interactive.sy;
+-		if (width < MINWIDTH && width > -MINWIDTH) {
+-			if (width < 0) {
+-				width *=3D -1;
+-				x -=3D width - window_border * 2 * scale;
+-			} else {
+-				x -=3D MINWIDTH - width;
+-			}
+-			width =3D MINWIDTH;
+-		}
+-		if (width < 0) {
+-			width *=3D -1;
+-			x -=3D width - window_border * 2 * scale;
+-		}
+-		goto Done;
+-	case INPUT_STATE_BORDER_DRAG_BOTTOM:
+-		x =3D view->x;
+-		y =3D view->y;
+-		width =3D view->xdg_surface->surface->current.width;
+-		height =3D server->cursor->y - server->interactive.sy;
+-		goto Done;
+-	case INPUT_STATE_BORDER_DRAG_RIGHT:
+-		x =3D view->x;
+-		y =3D view->y;
+-		width =3D server->cursor->x - server->interactive.sx;
+-		height =3D view->xdg_surface->surface->current.height;
+-		goto Done;
+-	case INPUT_STATE_BORDER_DRAG_LEFT:
+-		x =3D server->cursor->x;
+-		y =3D view->y;
+-		width =3D view->xdg_surface->surface->current.width - (server->cursor-=
+>x - server->interactive.sx);
+-		height =3D view->xdg_surface->surface->current.height;
+-		if (width < MINWIDTH && width > -MINWIDTH) {
+-			if (width < 0) {
+-				width *=3D -1;
+-				x -=3D width - window_border * 2 * scale;
+-			} else {
+-				x -=3D MINWIDTH - width;
+-			}
+-			width =3D MINWIDTH;
+-		}
+-		if (width < 0) {
+-			width *=3D -1;
+-			x -=3D width - window_border * 2 * scale;
+-		}
+-		goto Done;
++	case INPUT_STATE_BORDER_DRAG:
++		box =3D which_box(server);
++		render_view_border(renderer, output, NULL, box.x, box.y, box.width, bo=
+x.height, 1);
++		break;
+ 	case INPUT_STATE_MOVE:
+ 		render_view_border(renderer, output, view,
+ 			server->cursor->x - server->interactive.sx,
+@@ -450,20 +329,18 @@ static void output_frame(struct wl_listener *listen=
+er, void *data) {
+ 		y =3D server->interactive.sy;
+ 		width =3D server->cursor->x - server->interactive.sx;
+ 		height =3D server->cursor->y - server->interactive.sy;
+-	Done:
+ 		if (width < 0) {
+ 			width *=3D -1;
+-			x -=3D ((width < MINWIDTH) ? MINWIDTH : width) + window_border * 2 * =
+scale;
++			x -=3D width + window_border * 2;
+ 		}
+ 		if (height < 0) {
+ 			height *=3D -1;
+-			y -=3D ((height < MINHEIGHT) ? MINHEIGHT : height) + window_border * =
+2 * scale;
+-		}
+-		if (width < MINWIDTH) {
+-			width =3D MINWIDTH;
++			y -=3D height + window_border * 2;
+ 		}
+-		if (height < MINHEIGHT) {
+-			height =3D MINHEIGHT;
++		if (width > 0 && height > 0) {
++			box.x =3D x, box.y =3D y, box.width =3D width, box.height =3D height;
++			memcpy(color, surface, sizeof(color));
++			wlr_render_rect(renderer, &box, color, output->wlr_output->transform_=
+matrix);
+ 		}
+ 		render_view_border(renderer, output, NULL, x, y, width, height, 1);
+ 		break;
+diff --git a/view.c b/view.c
+index 259a7b1..1e93a13 100644
+--- a/view.c
++++ b/view.c
+@@ -122,6 +122,157 @@ static bool view_at(struct wio_view *view,
+ 	return false;
+ }
+=20
++static int portion(int x, int lo, int width) {
++	x -=3D lo;
++	if (x < 20) {
++		return 0;
++	}
++	if (x > width-20) {
++		return 2;
++	}
++	return 1;
++}
++
++static int which_corner(struct wlr_box *box, int x, int y) {
++	int i, j;
++
++	i =3D portion(x, box->x, box->width);
++	j =3D portion(y, box->y, box->height);
++	return 3*j+i;
++}
++
++struct wlr_box which_box(struct wio_server *server) {
++	struct wlr_box box;
++	int x1, x2, y1, y2, width, height;
++	switch (server->interactive.view->area) {
++	case VIEW_AREA_BORDER_TOP_LEFT:
++		y1 =3D server->cursor->y;
++		y2 =3D server->interactive.view->y + server->interactive.view->xdg_sur=
+face->surface->current.height;
++		x1 =3D server->cursor->x;
++		x2 =3D server->interactive.view->x + server->interactive.view->xdg_sur=
+face->surface->current.width;
++		less_swap1(y2, y1);
++		less_swap1(x2, x1);
++		width =3D x2 - x1;
++		if (width < MINWIDTH
++			&& (x1 - server->interactive.view->x) < (server->interactive.view->xd=
+g_surface->surface->current.width)) {
++			x1 -=3D MINWIDTH - width;
++		}
++		height =3D y2 - y1;
++		if (height < MINHEIGHT
++			&& (y1 - server->interactive.view->y) < (server->interactive.view->xd=
+g_surface->surface->current.height)) {
++			y1 -=3D MINHEIGHT - height;
++		}
++		break;
++	case VIEW_AREA_BORDER_TOP:
++		y1 =3D server->cursor->y;
++		y2 =3D server->interactive.view->y + server->interactive.view->xdg_sur=
+face->surface->current.height;
++		x1 =3D server->interactive.view->x;
++		less_swap1(y2, y1);
++		width =3D server->interactive.view->xdg_surface->surface->current.widt=
+h;
++		height =3D y2 - y1;
++		if (height < MINHEIGHT
++			&& (y1 - server->interactive.view->y) < (server->interactive.view->xd=
+g_surface->surface->current.height)) {
++			y1 -=3D MINHEIGHT - height;
++		}
++		break;
++	case VIEW_AREA_BORDER_TOP_RIGHT:
++		y1 =3D server->cursor->y;
++		y2 =3D server->interactive.view->y + server->interactive.view->xdg_sur=
+face->surface->current.height;
++		x1 =3D server->interactive.view->x;
++		x2 =3D server->cursor->x;
++		less_swap1(y2, y1);
++		less_swap2(x2, x1);
++		width =3D x2 - x1;
++		if (width < MINWIDTH && (x1 - server->interactive.view->x) < 0) {
++			x1 -=3D MINWIDTH - width;
++		}
++		height =3D y2 - y1;
++		if (height < MINHEIGHT
++			&& (y1 - server->interactive.view->y) < (server->interactive.view->xd=
+g_surface->surface->current.height)) {
++			y1 -=3D MINHEIGHT - height;
++		}
++		break;
++	case VIEW_AREA_BORDER_LEFT:
++		x1 =3D server->cursor->x;
++		x2 =3D server->interactive.view->x + server->interactive.view->xdg_sur=
+face->surface->current.width;
++		y1 =3D server->interactive.view->y;
++		less_swap1(x2, x1);
++		width =3D x2 - x1;
++		if (width < MINWIDTH
++			&& (x1 - server->interactive.view->x) < (server->interactive.view->xd=
+g_surface->surface->current.width)) {
++			x1 -=3D MINWIDTH - width;
++		}
++		height =3D server->interactive.view->xdg_surface->surface->current.hei=
+ght;
++		break;
++	case VIEW_AREA_BORDER_RIGHT:
++		x1 =3D server->interactive.view->x;
++		x2 =3D server->cursor->x;
++		y1 =3D server->interactive.view->y;
++		less_swap2(x2, x1);
++		width =3D x2 - x1;
++		if (width < MINWIDTH && (x1 - server->interactive.view->x) < 0) {
++			x1 -=3D MINWIDTH - width;
++		}
++		height =3D server->interactive.view->xdg_surface->surface->current.hei=
+ght;
++		break;
++	case VIEW_AREA_BORDER_BOTTOM_LEFT:
++		x1 =3D server->cursor->x;
++		x2 =3D server->interactive.view->x + server->interactive.view->xdg_sur=
+face->surface->current.width;
++		y1 =3D server->interactive.view->y;
++		y2 =3D server->cursor->y;
++		less_swap1(x2, x1);
++		less_swap2(y2, y1);
++		width =3D x2 - x1;
++		if (width < MINWIDTH
++			&& (x1 - server->interactive.view->x) < (server->interactive.view->xd=
+g_surface->surface->current.width)) {
++			x1 -=3D MINWIDTH - width;
++		}
++		height =3D y2 - y1;
++		if (height < MINHEIGHT && (y1 - server->interactive.view->y) < 0) {
++			y1 -=3D MINHEIGHT - height;
++		}
++		break;
++	case VIEW_AREA_BORDER_BOTTOM:
++		x1 =3D server->interactive.view->x;
++		y1 =3D server->interactive.view->y;
++		y2 =3D server->cursor->y;
++		less_swap2(y2, y1);
++		width =3D server->interactive.view->xdg_surface->surface->current.widt=
+h;
++		height =3D y2 - y1;
++		if (height < MINHEIGHT && (y1 - server->interactive.view->y) < 0) {
++			y1 -=3D MINHEIGHT - height;
++		}
++		break;
++	case VIEW_AREA_BORDER_BOTTOM_RIGHT:
++		x1 =3D server->interactive.view->x;
++		x2 =3D server->cursor->x;
++		y1 =3D server->interactive.view->y;
++		y2 =3D server->cursor->y;
++		less_swap2(x2, x1);
++		less_swap2(y2, y1);
++		width =3D x2 - x1;
++		if (width < MINWIDTH && (x1 - server->interactive.view->x) < 0) {
++			x1 -=3D MINWIDTH - width;
++		}
++		height =3D y2 - y1;
++		if (height < MINHEIGHT && (y1 - server->interactive.view->y) < 0) {
++			y1 -=3D MINHEIGHT - height;
++		}
++		break;
++	}
++	if (width < MINWIDTH) {
++		width =3D MINWIDTH;
++	}
++	if (height < MINHEIGHT) {
++		height =3D MINHEIGHT;
++	}
++	box.x =3D x1;
++	box.y =3D y1;
++	box.width =3D width;
++	box.height =3D height;
++	return box;
++}
++
+ struct wio_view *wio_view_at(struct wio_server *server, double lx, doubl=
+e ly,
+ 		struct wlr_surface **surface, double *sx, double *sy) {
+ 	struct wlr_box border_box =3D {
+@@ -130,49 +281,18 @@ struct wio_view *wio_view_at(struct wio_server *ser=
+ver, double lx, double ly,
+ 	};
+ 	struct wio_view *view;
+ 	wl_list_for_each(view, &server->views, link) {
+-		view->area =3D VIEW_AREA_NONE;
+-
+ 		// Surface
+ 		if (view_at(view, lx, ly, surface, sx, sy)) {
+ 			view->area =3D VIEW_AREA_SURFACE;
+ 			return view;
+ 		}
+-
+-		// Top border
+-		border_box.height =3D window_border;
+-		border_box.width =3D view->xdg_surface->surface->current.width + windo=
+w_border * 2;
++		// Border
+ 		border_box.x =3D view->x - window_border;
+ 		border_box.y =3D view->y - window_border;
+-		if (wlr_box_contains_point(&border_box, server->cursor->x, server->cur=
+sor->y)) {
+-			view->area =3D VIEW_AREA_BORDER_TOP;
+-			goto SideBorder;
+-		}
+-
+-		// Bottom border
+-		border_box.y =3D view->y + view->xdg_surface->surface->current.height;
+-		if (wlr_box_contains_point(&border_box, server->cursor->x, server->cur=
+sor->y)) {
+-			view->area =3D VIEW_AREA_BORDER_BOTTOM;
+-		}
+-
+-	SideBorder:
+-		// Right border
++		border_box.width =3D view->xdg_surface->surface->current.width + windo=
+w_border * 2;
+ 		border_box.height =3D view->xdg_surface->surface->current.height + win=
+dow_border * 2;
+-		border_box.width =3D window_border;
+-		border_box.x =3D view->x + view->xdg_surface->surface->current.width;
+-		border_box.y =3D view->y - window_border;
+-		if (wlr_box_contains_point(&border_box, server->cursor->x, server->cur=
+sor->y)) {
+-			view->area |=3D VIEW_AREA_BORDER_RIGHT;
+-			return view;
+-		}
+-
+-		// Left border
+-		border_box.x =3D view->x - window_border;
+ 		if (wlr_box_contains_point(&border_box, server->cursor->x, server->cur=
+sor->y)) {
+-			view->area |=3D VIEW_AREA_BORDER_LEFT;
+-			return view;
+-		}
+-
+-		if (view->area !=3D VIEW_AREA_NONE) {
++			view->area =3D which_corner(&border_box, server->cursor->x, server->c=
+ursor->y);
+ 			return view;
+ 		}
+ 	}
+--=20

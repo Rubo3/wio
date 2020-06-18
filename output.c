@@ -275,7 +275,9 @@ static void output_frame(struct wl_listener *listener, void *data) {
 	struct wio_output *output = wl_container_of(listener, output, frame);
 	struct wio_server *server = output->server;
 	struct wlr_renderer *renderer = server->renderer;
-    int x, y, width, height, scale;
+    struct wlr_box box;
+	int x, y, width, height;
+	float color[4];
 
 	struct timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
@@ -311,134 +313,11 @@ static void output_frame(struct wl_listener *listener, void *data) {
 				render_surface, &rdata);
 	}
 	view = server->interactive.view;
-    scale = output->wlr_output->scale;
 	switch (server->input_state) {
-    case INPUT_STATE_BORDER_DRAG_TOP_RIGHT:
-		x = view->x;
-		y = server->cursor->y;
-		width = server->cursor->x - server->interactive.sx;
-		height = view->xdg_surface->surface->current.height - (server->cursor->y - server->interactive.sy);
-		if (height < MINHEIGHT && height > -MINHEIGHT) {
-			if (height < 0) {
-				height *= -1;
-				y -= height - window_border * 2 * scale;
-			} else {
-				y -= MINHEIGHT - height;
-			}
-			height = MINHEIGHT;
-		}
-		if (height < 0) {
-			height *= -1;
-			y -= height - window_border * 2 * scale;
-		}
-		goto Done;
-	case INPUT_STATE_BORDER_DRAG_TOP_LEFT:
-		x = server->cursor->x;
-		y = server->cursor->y;
-		width = view->xdg_surface->surface->current.width - (server->cursor->x - server->interactive.sx);
-		height = view->xdg_surface->surface->current.height - (server->cursor->y - server->interactive.sy);
-		if (width < MINWIDTH && width > -MINWIDTH) {
-			if (width < 0) {
-				width *= -1;
-				x -= width - window_border * 2 * scale;
-			} else {
-				x -= MINWIDTH - width;
-			}
-			width = MINWIDTH;
-		}
-		if (height < MINHEIGHT && height > -MINHEIGHT) {
-			if (height < 0) {
-				height *= -1;
-				y -= height - window_border * 2 * scale;
-			} else {
-				y -= MINHEIGHT - height;
-			}
-			height = MINHEIGHT;
-		}
-		if (width < 0) {
-			width *= -1;
-			x -= width - window_border * 2 * scale;
-		}
-		if (height < 0) {
-			height *= -1;
-			y -= height - window_border * 2 * scale;
-		}
-		goto Done;
-	case INPUT_STATE_BORDER_DRAG_TOP:
-		x = view->x;
-		y = server->cursor->y;
-		width = view->xdg_surface->surface->current.width;
-		height = view->xdg_surface->surface->current.height - (server->cursor->y - server->interactive.sy);
-		if (height < MINHEIGHT && height > -MINHEIGHT) {
-			if (height < 0) {
-				height *= -1;
-				y -= height - window_border * 2 * scale;
-			} else {
-				y -= MINHEIGHT - height;
-			}
-			height = MINHEIGHT;
-		}
-		if (height < 0) {
-			height *= -1;
-			y -= height - window_border * 2 * scale;
-		}
-		goto Done;
-	case INPUT_STATE_BORDER_DRAG_BOTTOM_RIGHT:
-		x = view->x;
-		y = view->y;
-		width = server->cursor->x - server->interactive.sx;
-		height = server->cursor->y - server->interactive.sy;
-		goto Done;
-	case INPUT_STATE_BORDER_DRAG_BOTTOM_LEFT:
-		x = server->cursor->x;
-		y = view->y;
-		width = view->xdg_surface->surface->current.width - (server->cursor->x - server->interactive.sx);
-		height = server->cursor->y - server->interactive.sy;
-		if (width < MINWIDTH && width > -MINWIDTH) {
-			if (width < 0) {
-				width *= -1;
-				x -= width - window_border * 2 * scale;
-			} else {
-				x -= MINWIDTH - width;
-			}
-			width = MINWIDTH;
-		}
-		if (width < 0) {
-			width *= -1;
-			x -= width - window_border * 2 * scale;
-		}
-		goto Done;
-	case INPUT_STATE_BORDER_DRAG_BOTTOM:
-		x = view->x;
-		y = view->y;
-		width = view->xdg_surface->surface->current.width;
-		height = server->cursor->y - server->interactive.sy;
-        goto Done;
-	case INPUT_STATE_BORDER_DRAG_RIGHT:
-		x = view->x;
-		y = view->y;
-		width = server->cursor->x - server->interactive.sx;
-		height = view->xdg_surface->surface->current.height;
-		goto Done;
-	case INPUT_STATE_BORDER_DRAG_LEFT:
-		x = server->cursor->x;
-		y = view->y;
-		width = view->xdg_surface->surface->current.width - (server->cursor->x - server->interactive.sx);
-		height = view->xdg_surface->surface->current.height;
-		if (width < MINWIDTH && width > -MINWIDTH) {
-			if (width < 0) {
-				width *= -1;
-				x -= width - window_border * 2 * scale;
-			} else {
-				x -= MINWIDTH - width;
-			}
-			width = MINWIDTH;
-		}
-		if (width < 0) {
-			width *= -1;
-			x -= width - window_border * 2 * scale;
-		}
-		goto Done;
+    case INPUT_STATE_BORDER_DRAG:
+		box = which_box(server);
+		render_view_border(renderer, output, NULL, box.x, box.y, box.width, box.height, 1);
+		break;
 	case INPUT_STATE_MOVE:
 		render_view_border(renderer, output, view,
 			server->cursor->x - server->interactive.sx,
@@ -453,20 +332,16 @@ static void output_frame(struct wl_listener *listener, void *data) {
 		y = server->interactive.sy;
 		width = server->cursor->x - server->interactive.sx;
 		height = server->cursor->y - server->interactive.sy;
-	Done:
 		if (width < 0) {
 			width *= -1;
-			x -= ((width < MINWIDTH) ? MINWIDTH : width) + window_border * 2 * scale;
+			x -= width + window_border * 2;
 		}
 		if (height < 0) {
 			height *= -1;
-			y -= ((height < MINHEIGHT) ? MINHEIGHT : height) + window_border * 2 * scale;
-		}
-		if (width < MINWIDTH) {
-			width = MINWIDTH;
-		}
-		if (height < MINHEIGHT) {
-			height = MINHEIGHT;
+        if (width > 0 && height > 0) {
+			box.x = x, box.y = y, box.width = width, box.height = height;
+			memcpy(color, surface, sizeof(color));
+			wlr_render_rect(renderer, &box, color, output->wlr_output->transform_matrix);
 		}
 		render_view_border(renderer, output, NULL, x, y, width, height, 1);
 		break;

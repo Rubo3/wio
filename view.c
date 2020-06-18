@@ -122,6 +122,157 @@ static bool view_at(struct wio_view *view,
 	return false;
 }
 
+static int portion(int x, int lo, int width) {
+	x -= lo;
+	if (x < 20) {
+		return 0;
+	}
+	if (x > width-20) {
+		return 2;
+	}
+	return 1;
+}
+
+static int which_corner(struct wlr_box *box, int x, int y) {
+	int i, j;
+
+	i = portion(x, box->x, box->width);
+	j = portion(y, box->y, box->height);
+	return 3*j+i;
+}
+
+struct wlr_box which_box(struct wio_server *server) {
+	struct wlr_box box;
+	int x1, x2, y1, y2, width, height;
+	switch (server->interactive.view->area) {
+	case VIEW_AREA_BORDER_TOP_LEFT:
+		y1 = server->cursor->y;
+		y2 = server->interactive.view->y + server->interactive.view->xdg_surface->surface->current.height;
+		x1 = server->cursor->x;
+		x2 = server->interactive.view->x + server->interactive.view->xdg_surface->surface->current.width;
+		less_swap1(y2, y1);
+		less_swap1(x2, x1);
+		width = x2 - x1;
+		if (width < MINWIDTH
+			&& (x1 - server->interactive.view->x) < (server->interactive.view->xdg_surface->surface->current.width)) {
+			x1 -= MINWIDTH - width;
+		}
+		height = y2 - y1;
+		if (height < MINHEIGHT
+			&& (y1 - server->interactive.view->y) < (server->interactive.view->xdg_surface->surface->current.height)) {
+			y1 -= MINHEIGHT - height;
+		}
+		break;
+	case VIEW_AREA_BORDER_TOP:
+		y1 = server->cursor->y;
+		y2 = server->interactive.view->y + server->interactive.view->xdg_surface->surface->current.height;
+		x1 = server->interactive.view->x;
+		less_swap1(y2, y1);
+		width = server->interactive.view->xdg_surface->surface->current.width;
+		height = y2 - y1;
+		if (height < MINHEIGHT
+			&& (y1 - server->interactive.view->y) < (server->interactive.view->xdg_surface->surface->current.height)) {
+			y1 -= MINHEIGHT - height;
+		}
+		break;
+	case VIEW_AREA_BORDER_TOP_RIGHT:
+		y1 = server->cursor->y;
+		y2 = server->interactive.view->y + server->interactive.view->xdg_surface->surface->current.height;
+		x1 = server->interactive.view->x;
+		x2 = server->cursor->x;
+		less_swap1(y2, y1);
+		less_swap2(x2, x1);
+		width = x2 - x1;
+		if (width < MINWIDTH && (x1 - server->interactive.view->x) < 0) {
+			x1 -= MINWIDTH - width;
+		}
+		height = y2 - y1;
+		if (height < MINHEIGHT
+			&& (y1 - server->interactive.view->y) < (server->interactive.view->xdg_surface->surface->current.height)) {
+			y1 -= MINHEIGHT - height;
+		}
+		break;
+	case VIEW_AREA_BORDER_LEFT:
+		x1 = server->cursor->x;
+		x2 = server->interactive.view->x + server->interactive.view->xdg_surface->surface->current.width;
+		y1 = server->interactive.view->y;
+		less_swap1(x2, x1);
+		width = x2 - x1;
+		if (width < MINWIDTH
+			&& (x1 - server->interactive.view->x) < (server->interactive.view->xdg_surface->surface->current.width)) {
+			x1 -= MINWIDTH - width;
+		}
+		height = server->interactive.view->xdg_surface->surface->current.height;
+		break;
+	case VIEW_AREA_BORDER_RIGHT:
+		x1 = server->interactive.view->x;
+		x2 = server->cursor->x;
+		y1 = server->interactive.view->y;
+		less_swap2(x2, x1);
+		width = x2 - x1;
+		if (width < MINWIDTH && (x1 - server->interactive.view->x) < 0) {
+			x1 -= MINWIDTH - width;
+		}
+		height = server->interactive.view->xdg_surface->surface->current.height;
+		break;
+	case VIEW_AREA_BORDER_BOTTOM_LEFT:
+		x1 = server->cursor->x;
+		x2 = server->interactive.view->x + server->interactive.view->xdg_surface->surface->current.width;
+		y1 = server->interactive.view->y;
+		y2 = server->cursor->y;
+		less_swap1(x2, x1);
+		less_swap2(y2, y1);
+		width = x2 - x1;
+		if (width < MINWIDTH
+			&& (x1 - server->interactive.view->x) < (server->interactive.view->xdg_surface->surface->current.width)) {
+			x1 -= MINWIDTH - width;
+		}
+		height = y2 - y1;
+		if (height < MINHEIGHT && (y1 - server->interactive.view->y) < 0) {
+			y1 -= MINHEIGHT - height;
+		}
+		break;
+	case VIEW_AREA_BORDER_BOTTOM:
+		x1 = server->interactive.view->x;
+		y1 = server->interactive.view->y;
+		y2 = server->cursor->y;
+		less_swap2(y2, y1);
+		width = server->interactive.view->xdg_surface->surface->current.width;
+		height = y2 - y1;
+		if (height < MINHEIGHT && (y1 - server->interactive.view->y) < 0) {
+			y1 -= MINHEIGHT - height;
+		}
+		break;
+	case VIEW_AREA_BORDER_BOTTOM_RIGHT:
+		x1 = server->interactive.view->x;
+		x2 = server->cursor->x;
+		y1 = server->interactive.view->y;
+		y2 = server->cursor->y;
+		less_swap2(x2, x1);
+		less_swap2(y2, y1);
+		width = x2 - x1;
+		if (width < MINWIDTH && (x1 - server->interactive.view->x) < 0) {
+			x1 -= MINWIDTH - width;
+		}
+		height = y2 - y1;
+		if (height < MINHEIGHT && (y1 - server->interactive.view->y) < 0) {
+			y1 -= MINHEIGHT - height;
+		}
+		break;
+	}
+	if (width < MINWIDTH) {
+		width = MINWIDTH;
+	}
+	if (height < MINHEIGHT) {
+		height = MINHEIGHT;
+	}
+	box.x = x1;
+	box.y = y1;
+	box.width = width;
+	box.height = height;
+	return box;
+}
+
 struct wio_view *wio_view_at(struct wio_server *server, double lx, double ly,
 		struct wlr_surface **surface, double *sx, double *sy) {
 	struct wlr_box border_box = {
@@ -130,48 +281,19 @@ struct wio_view *wio_view_at(struct wio_server *server, double lx, double ly,
 	};
 	struct wio_view *view;
 	wl_list_for_each(view, &server->views, link) {
-        view->area = VIEW_AREA_NONE;
-        
 		// Surface
 		if (view_at(view, lx, ly, surface, sx, sy)) {
 			view->area = VIEW_AREA_SURFACE;
 			return view;
 		}
-		// Top border
-		border_box.height = window_border;
-		border_box.width = view->xdg_surface->surface->current.width + window_border * 2;
+		// Border
 		border_box.x = view->x - window_border;
 		border_box.y = view->y - window_border;
-		if (wlr_box_contains_point(&border_box, server->cursor->x, server->cursor->y)) {
-			view->area = VIEW_AREA_BORDER_TOP;
-			goto SideBorder;
-		}
-
-        // Bottom border
-		border_box.y = view->y + view->xdg_surface->surface->current.height;
-		if (wlr_box_contains_point(&border_box, server->cursor->x, server->cursor->y)) {
-			view->area = VIEW_AREA_BORDER_BOTTOM;
- 		}
- 
-	SideBorder:
-		// Right border
+        border_box.width = view->xdg_surface->surface->current.width + window_border * 2;
 		border_box.height = view->xdg_surface->surface->current.height + window_border * 2;
-		border_box.width = window_border;
-		border_box.x = view->x + view->xdg_surface->surface->current.width;
-		border_box.y = view->y - window_border;
+        
 		if (wlr_box_contains_point(&border_box, server->cursor->x, server->cursor->y)) {
-			view->area |= VIEW_AREA_BORDER_RIGHT;
-			return view;
-		}
-
-		// Left border
-		border_box.x = view->x - window_border;
-		if (wlr_box_contains_point(&border_box, server->cursor->x, server->cursor->y)) {
-			view->area |= VIEW_AREA_BORDER_LEFT;
-			return view;
-		}
-
-		if (view->area != VIEW_AREA_NONE) {
+			view->area = which_corner(&border_box, server->cursor->x, server->cursor->y);
 			return view;
 		}
 	}
