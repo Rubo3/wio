@@ -114,42 +114,44 @@ static void process_cursor_motion(struct wio_server *server, uint32_t time) {
 	struct wlr_seat *seat = server->seat;
 	struct wlr_surface *surface = NULL;
 	struct wio_view *view = NULL;
-	if (server->input_state != INPUT_STATE_BORDER_DRAG) {
+	if (server->input_state == INPUT_STATE_NONE) {
 		view = wio_view_at(server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
 	}
-	if (!view) {
-		switch (server->input_state) {
-		case INPUT_STATE_MOVE_SELECT:
-		case INPUT_STATE_RESIZE_SELECT:
-		case INPUT_STATE_DELETE_SELECT:
-		case INPUT_STATE_HIDE_SELECT:
-			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
-					"hand1", server->cursor);
-			break;
-		case INPUT_STATE_MOVE:
-			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
-					"grabbing", server->cursor);
-			break;
-        case INPUT_STATE_BORDER_DRAG:
-			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
-					corner, server->cursor);
-			break;
-		case INPUT_STATE_RESIZE_START:
-		case INPUT_STATE_NEW_START:
-			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
-					"top_left_corner", server->cursor);
-			break;
-		case INPUT_STATE_RESIZE_END:
-		case INPUT_STATE_NEW_END:
-			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
-					"bottom_right_corner", server->cursor);
-			break;
-		default:
-			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
-					"left_ptr", server->cursor);
-			break;
-		}
+	if (view) {
+		goto End;
 	}
+	switch (server->input_state) {
+	case INPUT_STATE_MOVE_SELECT:
+	case INPUT_STATE_RESIZE_SELECT:
+	case INPUT_STATE_DELETE_SELECT:
+	case INPUT_STATE_HIDE_SELECT:
+		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+				"hand1", server->cursor);
+		break;
+	case INPUT_STATE_MOVE:
+		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+				"grabbing", server->cursor);
+		break;
+	case INPUT_STATE_BORDER_DRAG:
+		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+				corner, server->cursor);
+		break;
+	case INPUT_STATE_RESIZE_START:
+	case INPUT_STATE_NEW_START:
+		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+				"top_left_corner", server->cursor);
+		break;
+	case INPUT_STATE_RESIZE_END:
+	case INPUT_STATE_NEW_END:
+		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+				"bottom_right_corner", server->cursor);
+		break;
+	default:
+		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+				"left_ptr", server->cursor);
+		break;
+ 	}
+End:
 	if (surface) {
 		bool focus_changed = seat->pointer_state.focused_surface != surface;
 		wlr_seat_pointer_notify_enter(seat, surface, sx, sy);
@@ -417,23 +419,25 @@ void server_cursor_button(struct wl_listener *listener, void *data) {
 	struct wlr_event_pointer_button *event = data;
 	double sx, sy;
 	struct wlr_surface *surface = NULL;
-	struct wio_view *view = wio_view_at(
-			server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
-	if (server->input_state == INPUT_STATE_NONE && view) {
-		wio_view_focus(view, surface);
-		switch (view->area) {
-		case VIEW_AREA_SURFACE:
-			wlr_seat_pointer_notify_button(server->seat,
-					event->time_msec, event->button, event->state);
-			break;
-        default:
-            corner = corners[view->area];
-			view_begin_interactive(view, surface, view->x, view->y,
-					corner, INPUT_STATE_BORDER_DRAG);
-			break;
-		}
-	} else {
+	struct wio_view *view = NULL;
+	if (server->input_state == INPUT_STATE_NONE) {
+		view = wio_view_at(server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
+	}
+    if (!view) {
 		handle_button_internal(server, event);
+        return;
+	}
+	wio_view_focus(view, surface);
+	switch (view->area) {
+	case VIEW_AREA_SURFACE:
+		wlr_seat_pointer_notify_button(server->seat,
+				event->time_msec, event->button, event->state);
+		break;
+	default:
+		corner = corners[view->area];
+		view_begin_interactive(view, surface, view->x, view->y,
+				corner, INPUT_STATE_BORDER_DRAG);
+		break;
 	}
 }
 
