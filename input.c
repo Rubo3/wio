@@ -142,6 +142,10 @@ End:
 			wlr_seat_pointer_notify_motion(seat, time, sx, sy);
 		}
 	} else {
+		if (view) {
+			wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
+					corners[view->area], server->cursor);
+		}
 		wlr_seat_pointer_clear_focus(seat);
 	}
 }
