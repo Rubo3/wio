@@ -434,6 +434,11 @@ void server_cursor_button(struct wl_listener *listener, void *data) {
 				event->time_msec, event->button, event->state);
 		break;
 	default:
+        if (event->button == BTN_RIGHT) {
+			view_begin_interactive(view, surface, sx, sy,
+					"grabbing", INPUT_STATE_MOVE);
+			break;
+		}
 		corner = corners[view->area];
 		view_begin_interactive(view, surface, view->x, view->y,
 				corner, INPUT_STATE_BORDER_DRAG);

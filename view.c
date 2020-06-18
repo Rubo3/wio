@@ -292,8 +292,10 @@ struct wio_view *wio_view_at(struct wio_server *server, double lx, double ly,
         border_box.width = view->xdg_surface->surface->current.width + window_border * 2;
 		border_box.height = view->xdg_surface->surface->current.height + window_border * 2;
         
-		if (wlr_box_contains_point(&border_box, server->cursor->x, server->cursor->y)) {
-			view->area = which_corner(&border_box, server->cursor->x, server->cursor->y);
+		if (wlr_box_contains_point(&border_box, lx, ly)) {
+			view->area = which_corner(&border_box, lx, ly);
+			*sx = lx - view->x;
+			*sy = ly - view->y;
 			return view;
 		}
 	}

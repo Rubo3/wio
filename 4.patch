@@ -1,0 +1,66 @@
+From: Leonid Bobrov <goleo@disroot.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=disroot.org; s=mail;
+	t=1592466141; bh=AdXmBwxFfMGItHmKzRqZ0kK/RIGAzWuCzhU0g4ODlAQ=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=AdY/bYISIDAyiNrf57HUoeG68c+gUvT9+XpIl2bUJI7tJ5PftFd2lV7GCvcI0cgiw
+	 I7T7ycGXgqJUopjgYgyXoNKnxIXBuikdoy6MI/no4eGTjN9qm9BGMr+pRVPyjV08d5
+	 tC09jtoEYp8RMFDhOAtZyC3/1YcSAYniaA9a0TYFifK2mNGV7L4CDJVWUgIHSsTm55
+	 BvnYhO+ZKR6pXPvob9bGpWv3KzuarlQk0JpOdEREtxfAZ/hSloz5CYR93/UcKnqFWN
+	 EqVxDtXxkp3Ss8MbFbynkjmVLCsmUqzJiIpjBQAWkBWnx0s7zbbyD3Hpx3EissrGVN
+	 Ktkosg8nkm9ag==
+To: ~sircmpwn/wio@lists.sr.ht,
+	Leon Plickat <leonhenrik.plickat@stud.uni-goetttingen.de>
+Cc: Leonid Bobrov <goleo@disroot.org>
+Subject: [PATCH 04/11] Move views dragging their borders
+Date: Thu, 18 Jun 2020 10:39:47 +0300
+Message-Id: <20200618073954.189606-5-goleo@disroot.org>
+In-Reply-To: <20200618073954.189606-1-goleo@disroot.org>
+References: <20200618073954.189606-1-goleo@disroot.org>
+Mime-Version: 1.0
+Content-Transfer-Encoding: quoted-printable
+
+---
+ input.c | 5 +++++
+ view.c  | 6 ++++--
+ 2 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/input.c b/input.c
+index c5b25d9..bd4389a 100644
+--- a/input.c
++++ b/input.c
+@@ -445,6 +445,11 @@ void server_cursor_button(struct wl_listener *listen=
+er, void *data) {
+ 				event->time_msec, event->button, event->state);
+ 		break;
+ 	default:
++		if (event->button =3D=3D BTN_RIGHT) {
++			view_begin_interactive(view, surface, sx, sy,
++					"grabbing", INPUT_STATE_MOVE);
++			break;
++		}
+ 		corner =3D corners[view->area];
+ 		view_begin_interactive(view, surface, view->x, view->y,
+ 				corner, INPUT_STATE_BORDER_DRAG);
+diff --git a/view.c b/view.c
+index 1e93a13..31697da 100644
+--- a/view.c
++++ b/view.c
+@@ -291,8 +291,10 @@ struct wio_view *wio_view_at(struct wio_server *serv=
+er, double lx, double ly,
+ 		border_box.y =3D view->y - window_border;
+ 		border_box.width =3D view->xdg_surface->surface->current.width + windo=
+w_border * 2;
+ 		border_box.height =3D view->xdg_surface->surface->current.height + win=
+dow_border * 2;
+-		if (wlr_box_contains_point(&border_box, server->cursor->x, server->cur=
+sor->y)) {
+-			view->area =3D which_corner(&border_box, server->cursor->x, server->c=
+ursor->y);
++		if (wlr_box_contains_point(&border_box, lx, ly)) {
++			view->area =3D which_corner(&border_box, lx, ly);
++			*sx =3D lx - view->x;
++			*sy =3D ly - view->y;
+ 			return view;
+ 		}
+ 	}
+--=20
