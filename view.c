@@ -6,8 +6,8 @@
 #include "view.h"
 
 // TODO: scale
-#define less_swap1(A, B) { if (A < B) { int C = A; A = B + window_border * 2; B = C + window_border * 2; } }
-#define less_swap2(A, B) { if (A < B) { int C = A; A = B - window_border * 2; B = C - window_border * 2; } }
+#define less_swap1(A, B) { if (A < B) { int C = A; A = B; B = C + window_border * 2; } }
+#define less_swap2(A, B) { if (A < B) { int C = A; A = B - window_border * 2; B = C; } }
 
 static void xdg_surface_map(struct wl_listener *listener, void *data) {
 	struct wio_view *view = wl_container_of(listener, view, map);
