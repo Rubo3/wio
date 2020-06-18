@@ -127,7 +127,7 @@ static void process_cursor_motion(struct wio_server *server, uint32_t time) {
 	case INPUT_STATE_RESIZE_END:
 	case INPUT_STATE_NEW_END:
 		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
-				"bottom_right_corner", server->cursor);
+				"grabbing", server->cursor);
 		break;
 	default:
 		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
@@ -174,7 +174,7 @@ static void menu_handle_button(struct wio_server *server, struct wlr_event_point
 	case 0:
 		server->input_state = INPUT_STATE_NEW_START;
 		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
-				"top_left_corner", server->cursor);
+				"grabbing", server->cursor);
 		break;
 	case 1:
 		server->input_state = INPUT_STATE_RESIZE_SELECT;
@@ -323,7 +323,7 @@ static void handle_button_internal(
             view = wio_view_at(server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
             if (view != NULL) {
                 view_begin_interactive(view, surface, sx, sy,
-                        "top_left_corner", INPUT_STATE_RESIZE_START);
+                        "grabbing", INPUT_STATE_RESIZE_START);
             } else {
                 view_end_interactive(server);
 			}
