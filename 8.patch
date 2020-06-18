@@ -1,0 +1,39 @@
+From: Leonid Bobrov <goleo@disroot.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=disroot.org; s=mail;
+	t=1592466143; bh=MMzydkX/ZxaCkmGU9oK5+vGCGH/Zq+YjriYHPgYYiS8=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=OfGCDUONNGUQR6Xh4GKHcyb6sgfEk4OOyT71AVPsTd56NA7TIEwrMXzBqWDnk9ImK
+	 2xfaAd3Xkl3pPqxligZZMwNfVxzyequc1o5gRtNNSDGQIHc8FfshRxqlLvuNRif58p
+	 cp7QEWPceU1U290qm8MimCvEuF2syaB8ASXMt7tDNK8+kHowQQ3AA+XnuA6EaG5xSd
+	 j0uDahc6NIa3wGE7Tsh+oef2PA2WXLJNQI+j/w88qksr9b9EmAsgDMlREQmWyJ4B6J
+	 iJ8dnSkhBJxH0qXOet3uYQZPTcfweHqiLtGuNpRPrrL0zXHmSQJ4gTE1TNwf8f8tul
+	 7J1cJ5RFdtErg==
+To: ~sircmpwn/wio@lists.sr.ht,
+	Leon Plickat <leonhenrik.plickat@stud.uni-goetttingen.de>
+Cc: Leonid Bobrov <goleo@disroot.org>
+Subject: [PATCH 08/11] Change surface color to grey
+Date: Thu, 18 Jun 2020 10:39:51 +0300
+Message-Id: <20200618073954.189606-9-goleo@disroot.org>
+In-Reply-To: <20200618073954.189606-1-goleo@disroot.org>
+References: <20200618073954.189606-1-goleo@disroot.org>
+Mime-Version: 1.0
+Content-Transfer-Encoding: quoted-printable
+
+---
+ include/colors.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/colors.h b/include/colors.h
+index b1f83d3..7ab7aff 100644
+--- a/include/colors.h
++++ b/include/colors.h
+@@ -30,7 +30,7 @@ static const float menu_border[4] =3D {
+ };
+=20
+ static const float surface[4] =3D {
+-	0xFF / 255.0f, 0xFF / 255.0f, 0xFF / 255.0f, 1.0f,
++	0xEE / 255.0f, 0xEE / 255.0f, 0xEE / 255.0f, 1.0f,
+ };
+=20
+ #endif
+--=20

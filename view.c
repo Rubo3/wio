@@ -216,39 +216,11 @@ struct wlr_box which_box(struct wio_server *server) {
 }
 
 struct wlr_box canon_box(struct wio_server *server, struct wlr_box box) {
-	if (box.width < MINWIDTH) {
-		switch (server->interactive.view->area) {
-		case VIEW_AREA_BORDER_TOP_LEFT:
-		case VIEW_AREA_BORDER_LEFT:
-		case VIEW_AREA_BORDER_BOTTOM_LEFT:
-			if ((box.x - server->interactive.sx) < server->interactive.view->xdg_surface->surface->current.width) {
-				box.x -= MINWIDTH - box.width;
-			}
-			break;
-		default:
-			if (box.x < server->interactive.sx) {
-				box.x -= MINWIDTH - box.width;
-			}
-		}
-		box.width = MINWIDTH;
+	static struct wlr_box cache;
+	if (box.width < MINWIDTH || box.height < MINHEIGHT) {
+		return cache;
 	}
-	if (box.height < MINHEIGHT) {
-		switch (server->interactive.view->area) {
-		case VIEW_AREA_BORDER_TOP_LEFT:
-		case VIEW_AREA_BORDER_TOP:
-		case VIEW_AREA_BORDER_TOP_RIGHT:
-			if ((box.y - server->interactive.sy) < server->interactive.view->xdg_surface->surface->current.height) {
-				box.y -= MINHEIGHT - box.height;
-			}
-			break;
-		default:
-			if (box.y < server->interactive.sy) {
-				box.y -= MINHEIGHT - box.height;
-			}
-		}
-		box.height = MINHEIGHT;
-	}
- 	return box;
+ 	return cache = box;
  }
 
 struct wio_view *wio_view_at(struct wio_server *server, double lx, double ly,
