@@ -214,19 +214,12 @@ static void view_end_interactive(struct wio_server *server) {
 }
 
 static void new_view(struct wio_server *server) {
-	int x1 = server->interactive.sx, x2 = server->cursor->x;
-	int y1 = server->interactive.sy, y2 = server->cursor->y;
-	less_swap2(x2, x1);
-	less_swap2(y2, y1);
-	int width = x2 - x1, height = y2 - y1;
-	if (width < MINWIDTH || height < MINHEIGHT) {
+	struct wlr_box box = which_box(server);
+	if (box.width < MINWIDTH || box.height < MINHEIGHT) {
 		return;
  	}
 	struct wio_new_view *view = calloc(1, sizeof(struct wio_new_view));
-    view->box.x = x1;
-	view->box.y = y1;
-	view->box.width = width;
-	view->box.height = height;
+    view->box = box;
 	int fd[2];
 	if (pipe(fd) != 0) {
 		wlr_log(WLR_ERROR, "Unable to create pipe for fork");
@@ -284,8 +277,6 @@ static void handle_button_internal(
 		.width = server->menu.width, .height = server->menu.height,
 	};
     struct wlr_box box;
-	int x1, x2, y1, y2;
-	uint32_t width, height;
     double sx, sy;
 	struct wlr_surface *surface = NULL;
 	struct wio_view *view;
@@ -328,7 +319,7 @@ static void handle_button_internal(
             view = wio_view_at(server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
             if (view != NULL) {
                 view_begin_interactive(view, surface, sx, sy,
-                        "bottom_right_corner", INPUT_STATE_RESIZE_START);
+                        "top_left_corner", INPUT_STATE_RESIZE_START);
             } else {
                 view_end_interactive(server);
 			}
@@ -343,23 +334,17 @@ static void handle_button_internal(
 			break;
         case INPUT_STATE_BORDER_DRAG:
             box = which_box(server);
-            x1 = box.x, y1 = box.y, width = box.width, height = box.height;
+            box = canon_box(server, box);
 		case INPUT_STATE_RESIZE_END:
-			x1 = server->interactive.sx, x2 = server->cursor->x;
-			y1 = server->interactive.sy, y2 = server->cursor->y;
-			less_swap2(x2, x1);
-            less_swap2(y2, y1);
-            width = x2 - x1;
-			height = y2 - y1;
-		    if (width < MINWIDTH || height < MINHEIGHT) {
+			box = which_box(server);
+		    if (box.width < MINWIDTH || box.height < MINHEIGHT) {
                 view_end_interactive(server);
 			break;
             }
         Done:
-			wio_view_move(server->interactive.view,
-					x1, y1);
-			wlr_xdg_toplevel_set_size(
-					server->interactive.view->xdg_surface, width, height);
+			wio_view_move(server->interactive.view, box.x, box.y);
+            wlr_xdg_toplevel_set_size(server->interactive.view->xdg_surface, box.width, box.height);
+
 			view_end_interactive(server);
 			break;
 		case INPUT_STATE_MOVE_SELECT:

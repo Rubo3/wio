@@ -276,7 +276,6 @@ static void output_frame(struct wl_listener *listener, void *data) {
 	struct wio_server *server = output->server;
 	struct wlr_renderer *renderer = server->renderer;
     struct wlr_box box;
-	int x, y, width, height;
 	float color[4];
 
 	struct timespec now;
@@ -316,6 +315,7 @@ static void output_frame(struct wl_listener *listener, void *data) {
 	switch (server->input_state) {
     case INPUT_STATE_BORDER_DRAG:
 		box = which_box(server);
+        box = canon_box(server, box);
 		render_view_border(renderer, output, NULL, box.x, box.y, box.width, box.height, 1);
 		break;
 	case INPUT_STATE_MOVE:
@@ -328,22 +328,12 @@ static void output_frame(struct wl_listener *listener, void *data) {
 		break;
 	case INPUT_STATE_NEW_END:
 	case INPUT_STATE_RESIZE_END:
-		x = server->interactive.sx;
-		y = server->interactive.sy;
-		width = server->cursor->x - server->interactive.sx;
-		height = server->cursor->y - server->interactive.sy;
-		if (width < 0) {
-			width *= -1;
-			x -= width + window_border * 2;
-		}
-		if (height < 0) {
-			height *= -1;
-        if (width > 0 && height > 0) {
-			box.x = x, box.y = y, box.width = width, box.height = height;
+		box = which_box(server);
+		if (box.width > 0 && box.height > 0) {
 			memcpy(color, surface, sizeof(color));
 			wlr_render_rect(renderer, &box, color, output->wlr_output->transform_matrix);
 		}
-		render_view_border(renderer, output, NULL, x, y, width, height, 1);
+		render_view_border(renderer, output, NULL, box.x, box.y, box.width, box.height, 1);
 		break;
 	default:
 		break;
