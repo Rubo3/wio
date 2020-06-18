@@ -1,0 +1,40 @@
+From: Leonid Bobrov <goleo@disroot.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=disroot.org; s=mail;
+	t=1592466142; bh=o4Li2UFOn9OzeyBxn2bihxq4SW/HrfJgQ/+PYXypnXI=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=H46p/yXhJrpcHpiOfwoqX/KQEH98MGDnEx3JG78pDF9aWqqlVwdmm4Ce6s8TkczYH
+	 sXGrTUFmOMesSVFjqmqlY7xZ+PUsp+Y3bg4m2Hj6lMSVSL4MZ+ki/mQ3XKDkhHTnjc
+	 41YOYKnfZYXJCHas/IvceejyWUToLIk0/fFuqznrMO3lrXeyQiD4t8RBa7uM0mVh/2
+	 5HIYjR1V1XuiLfIdm8C89FLH9oAyZRNHeY3YanBRwyyO7jKBhniHMmVcZKz68h9ZTK
+	 9g3a9Rtxy9ivNMcbrcnvWJxnbrecFgHQPQd+ZGCPSEk1hDNZD2VTVkKkfE2ONN1Ln4
+	 h+BnBYeWwPK6A==
+To: ~sircmpwn/wio@lists.sr.ht,
+	Leon Plickat <leonhenrik.plickat@stud.uni-goetttingen.de>
+Cc: Leonid Bobrov <goleo@disroot.org>
+Subject: [PATCH 05/11] Remove obsolete options in contrib/alacritty.yml
+Date: Thu, 18 Jun 2020 10:39:48 +0300
+Message-Id: <20200618073954.189606-6-goleo@disroot.org>
+In-Reply-To: <20200618073954.189606-1-goleo@disroot.org>
+References: <20200618073954.189606-1-goleo@disroot.org>
+Mime-Version: 1.0
+Content-Transfer-Encoding: quoted-printable
+
+---
+ contrib/alacritty.yml | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/contrib/alacritty.yml b/contrib/alacritty.yml
+index cef2dcd..0cbc48a 100644
+--- a/contrib/alacritty.yml
++++ b/contrib/alacritty.yml
+@@ -11,9 +11,6 @@ window:
+ scrolling:
+   history: 10000
+   multiplier: 3
+-  faux_multiplier: 3
+-  auto_scroll: false
+-tabspaces: 8
+ draw_bold_text_with_bright_colors: true
+ font:
+   normal:
+--=20

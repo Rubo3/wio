@@ -29,29 +29,12 @@ static void keyboard_handle_modifiers( struct wl_listener *listener, void *data)
 		&keyboard->device->keyboard->modifiers);
 }
 
-static void view_end_interactive(struct wio_server *server);
 static void keyboard_handle_key(struct wl_listener *listener, void *data) {
 	struct wio_keyboard *keyboard = wl_container_of(listener, keyboard, key);
 	struct wio_server *server = keyboard->server;
 	struct wlr_event_keyboard_key *event = data;
 	struct wlr_seat *seat = server->seat;
-	xkb_keycode_t keycode = event->keycode + 8;
-	const xkb_keysym_t *syms;
-	int nsyms = xkb_state_key_get_syms(keyboard->device->keyboard->xkb_state, keycode, &syms);
-
-	for (int i = 0; i < nsyms; i++) {
-		if (syms[i] == XKB_KEY_Escape) {
-			switch (server->input_state) {
-			case INPUT_STATE_NONE:
-			case INPUT_STATE_MENU:
-				break;
-			default:
-				view_end_interactive(server);
-				return;
-			}
-		}
-	}
-
+	
 	wlr_seat_set_keyboard(seat, keyboard->device);
 	wlr_seat_keyboard_notify_key(seat, event->time_msec, event->keycode, event->state);
 }
@@ -303,9 +286,12 @@ static void handle_button_internal(
     struct wlr_box box;
 	int x1, x2, y1, y2;
 	uint32_t width, height;
+    double sx, sy;
+	struct wlr_surface *surface = NULL;
+	struct wio_view *view;
 	switch (server->input_state) {
 		case INPUT_STATE_NONE:
-			if (event->state == WLR_BUTTON_PRESSED && event->button == BTN_RIGHT) {
+			if (event->state == WLR_BUTTON_PRESSED) {
 				// TODO: Open over the last-used menu item
 				server->input_state = INPUT_STATE_MENU;
 				server->menu.x = server->cursor->x;
@@ -324,36 +310,36 @@ static void handle_button_internal(
 			}
 			break;
 		case INPUT_STATE_NEW_START:
-			if (event->state == WLR_BUTTON_PRESSED) {
-				server->interactive.sx = server->cursor->x;
-				server->interactive.sy = server->cursor->y;
-				server->input_state = INPUT_STATE_NEW_END;
-			}
+			if (event->state != WLR_BUTTON_PRESSED) {
+                break;
+            }
+            server->interactive.sx = server->cursor->x;
+            server->interactive.sy = server->cursor->y;
+            server->input_state = INPUT_STATE_NEW_END;
 			break;
 		case INPUT_STATE_NEW_END:
 			new_view(server);
 			view_end_interactive(server);
 			break;
 		case INPUT_STATE_RESIZE_SELECT:
-			if (event->state == WLR_BUTTON_PRESSED) {
-				double sx, sy;
-				struct wlr_surface *surface = NULL;
-				struct wio_view *view = wio_view_at(server,
-						server->cursor->x, server->cursor->y, &surface, &sx, &sy);
-				if (view != NULL) {
-					view_begin_interactive(view, surface, sx, sy,
-							"bottom_right_corner", INPUT_STATE_RESIZE_START);
-				} else {
-					view_end_interactive(server);
-				}
+			if (event->state != WLR_BUTTON_PRESSED) {
+                break;
+            }
+            view = wio_view_at(server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
+            if (view != NULL) {
+                view_begin_interactive(view, surface, sx, sy,
+                        "bottom_right_corner", INPUT_STATE_RESIZE_START);
+            } else {
+                view_end_interactive(server);
 			}
 			break;
 		case INPUT_STATE_RESIZE_START:
-			if (event->state == WLR_BUTTON_PRESSED) {
-				server->interactive.sx = server->cursor->x;
-				server->interactive.sy = server->cursor->y;
-				server->input_state = INPUT_STATE_RESIZE_END;
-			}
+			if (event->state != WLR_BUTTON_PRESSED) {
+                break;
+            }
+            server->interactive.sx = server->cursor->x;
+            server->interactive.sy = server->cursor->y;
+            server->input_state = INPUT_STATE_RESIZE_END;
 			break;
         case INPUT_STATE_BORDER_DRAG:
             box = which_box(server);
@@ -377,17 +363,15 @@ static void handle_button_internal(
 			view_end_interactive(server);
 			break;
 		case INPUT_STATE_MOVE_SELECT:
-			if (event->state == WLR_BUTTON_PRESSED) {
-				double sx, sy;
-				struct wlr_surface *surface = NULL;
-				struct wio_view *view = wio_view_at(server,
-						server->cursor->x, server->cursor->y, &surface, &sx, &sy);
-				if (view != NULL) {
-					view_begin_interactive(view, surface, sx, sy,
-							"grabbing", INPUT_STATE_MOVE);
-				} else {
-					view_end_interactive(server);
-				}
+			if (event->state != WLR_BUTTON_PRESSED) {
+                break;
+            }
+            view = wio_view_at(server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
+            if (view != NULL) {
+                view_begin_interactive(view, surface, sx, sy,
+					"grabbing", INPUT_STATE_MOVE);
+            } else {
+                view_end_interactive(server);
 			}
 			break;
 		case INPUT_STATE_MOVE:
@@ -397,16 +381,14 @@ static void handle_button_internal(
 			view_end_interactive(server);
 			break;
 		case INPUT_STATE_DELETE_SELECT:
-			if (event->state == WLR_BUTTON_PRESSED) {
-				double sx, sy;
-				struct wlr_surface *surface = NULL;
-				struct wio_view *view = wio_view_at(server,
-						server->cursor->x, server->cursor->y, &surface, &sx, &sy);
-				if (view != NULL) {
-					wlr_xdg_toplevel_send_close(view->xdg_surface);
-				}
-				view_end_interactive(server);
-			}
+			if (event->state != WLR_BUTTON_PRESSED) {
+                break;
+            }
+            view = wio_view_at(server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
+            if (view != NULL) {
+                wlr_xdg_toplevel_send_close(view->xdg_surface);
+            }
+            view_end_interactive(server);
 			break;
 		default:
 			// TODO
@@ -424,6 +406,10 @@ void server_cursor_button(struct wl_listener *listener, void *data) {
 		view = wio_view_at(server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
 	}
     if (!view) {
+        if (event->state == WLR_BUTTON_PRESSED && event->button != BTN_RIGHT) {
+			view_end_interactive(server);
+			return;
+		}
 		handle_button_internal(server, event);
         return;
 	}
