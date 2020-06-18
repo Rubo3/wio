@@ -30,7 +30,7 @@ static const float menu_border[4] = {
 };
 
 static const float surface[4] = {
-	0xFF / 255.0f, 0xFF / 255.0f, 0xFF / 255.0f, 1.0f,
+	0xEE / 255.0f, 0xEE / 255.0f, 0xEE / 255.0f, 1.0f,
 };
 
 #endif
