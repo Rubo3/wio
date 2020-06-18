@@ -334,6 +334,7 @@ static void handle_button_internal(
             }
             server->interactive.sx = server->cursor->x;
             server->interactive.sy = server->cursor->y;
+            server->interactive.view->area = VIEW_AREA_BORDER_BOTTOM_RIGHT;
             server->input_state = INPUT_STATE_RESIZE_END;
 			break;
         case INPUT_STATE_BORDER_DRAG:

@@ -1,0 +1,31 @@
+From: ~goleo <goleo@git.sr.ht>
+Date: Thu, 18 Jun 2020 11:26:02 +0300
+Subject: [PATCH wio 2/3] Fix weird output from Resize
+Message-ID: <159246952259.32149.11286279363919401072-2@git.sr.ht>
+X-Mailer: git.sr.ht
+Reply-to: ~goleo <goleo@disroot.org>
+In-Reply-To: <159246952259.32149.11286279363919401072-0@git.sr.ht>
+To: ~sircmpwn/wio@lists.sr.ht
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
+
+From: Leonid Bobrov <goleo@disroot.org>
+
+---
+ input.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/input.c b/input.c
+index 6a1daf1..c2b78f9 100644
+--- a/input.c
++++ b/input.c
+@@ -340,6 +340,7 @@ static void handle_button_internal(
+ 		}
+ 		server->interactive.sx = server->cursor->x;
+ 		server->interactive.sy = server->cursor->y;
++		server->interactive.view->area = VIEW_AREA_BORDER_BOTTOM_RIGHT;
+ 		server->input_state = INPUT_STATE_RESIZE_END;
+ 		break;
+ 	case INPUT_STATE_BORDER_DRAG:
+-- 
