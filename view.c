@@ -145,7 +145,46 @@ static int which_corner(struct wlr_box *box, int x, int y) {
 	return 3*j+i;
 }
 
-struct wlr_box which_box(struct wio_server *server) {
+struct wio_view *wio_view_at(struct wio_server *server, double lx, double ly,
+		struct wlr_surface **surface, double *sx, double *sy) {
+	struct wlr_box border_box = {
+		.x = 0, .y = 0,
+		.width = 0, .height = 0,
+	};
+	struct wio_view *view;
+	wl_list_for_each(view, &server->views, link) {
+		// Surface
+		if (view_at(view, lx, ly, surface, sx, sy)) {
+			view->area = VIEW_AREA_SURFACE;
+			return view;
+		}
+		// Border
+		border_box.x = view->x - window_border;
+		border_box.y = view->y - window_border;
+		border_box.width = view->xdg_surface->surface->current.width + window_border * 2;
+		border_box.height = view->xdg_surface->surface->current.height + window_border * 2;
+		if (wlr_box_contains_point(&border_box, lx, ly)) {
+			view->area = which_corner(&border_box, lx, ly);
+			*sx = lx - view->x;
+			*sy = ly - view->y;
+			return view;
+		}
+	}
+	return NULL;
+}
+
+void wio_view_move(struct wio_view *view, int x, int y) {
+	view->x = x;
+	view->y = y;
+
+	// Cheating as FUCK because I'm lazy
+	struct wio_output *output;
+	wl_list_for_each(output, &view->server->outputs, link) {
+		wlr_surface_send_enter(view->xdg_surface->surface, output->wlr_output);
+	}
+}
+
+struct wlr_box wio_which_box(struct wio_server *server) {
 	struct wlr_box box;
     int x1, x2, y1, y2;
 
@@ -215,50 +254,10 @@ struct wlr_box which_box(struct wio_server *server) {
 	return box;
 }
 
-struct wlr_box canon_box(struct wio_server *server, struct wlr_box box) {
+struct wlr_box wio_canon_box(struct wio_server *server, struct wlr_box box) {
 	static struct wlr_box cache;
 	if (box.width < MINWIDTH || box.height < MINHEIGHT) {
 		return cache;
 	}
  	return cache = box;
  }
-
-struct wio_view *wio_view_at(struct wio_server *server, double lx, double ly,
-		struct wlr_surface **surface, double *sx, double *sy) {
-	struct wlr_box border_box = {
-		.x = 0, .y = 0,
-		.width = 0, .height = 0,
-	};
-	struct wio_view *view;
-	wl_list_for_each(view, &server->views, link) {
-		// Surface
-		if (view_at(view, lx, ly, surface, sx, sy)) {
-			view->area = VIEW_AREA_SURFACE;
-			return view;
-		}
-		// Border
-		border_box.x = view->x - window_border;
-		border_box.y = view->y - window_border;
-        border_box.width = view->xdg_surface->surface->current.width + window_border * 2;
-		border_box.height = view->xdg_surface->surface->current.height + window_border * 2;
-        
-		if (wlr_box_contains_point(&border_box, lx, ly)) {
-			view->area = which_corner(&border_box, lx, ly);
-			*sx = lx - view->x;
-			*sy = ly - view->y;
-			return view;
-		}
-	}
-	return NULL;
-}
-
-void wio_view_move(struct wio_view *view, int x, int y) {
-	view->x = x;
-	view->y = y;
-
-	// Cheating as FUCK because I'm lazy
-	struct wio_output *output;
-	wl_list_for_each(output, &view->server->outputs, link) {
-		wlr_surface_send_enter(view->xdg_surface->surface, output->wlr_output);
-	}
-}

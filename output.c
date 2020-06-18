@@ -314,8 +314,8 @@ static void output_frame(struct wl_listener *listener, void *data) {
 	view = server->interactive.view;
 	switch (server->input_state) {
     case INPUT_STATE_BORDER_DRAG:
-		box = which_box(server);
-        box = canon_box(server, box);
+		box = wio_which_box(server);
+		box = wio_canon_box(server, box);
 		render_view_border(renderer, output, NULL, box.x, box.y, box.width, box.height, 1);
 		break;
 	case INPUT_STATE_MOVE:
@@ -328,7 +328,7 @@ static void output_frame(struct wl_listener *listener, void *data) {
 		break;
 	case INPUT_STATE_NEW_END:
 	case INPUT_STATE_RESIZE_END:
-		box = which_box(server);
+		box = wio_which_box(server);
 		if (box.width > 0 && box.height > 0) {
 			memcpy(color, surface, sizeof(color));
 			wlr_render_rect(renderer, &box, color, output->wlr_output->transform_matrix);

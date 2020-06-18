@@ -31,11 +31,11 @@ enum wio_view_area {
 };
 
 void server_new_xdg_surface(struct wl_listener *listener, void *data);
-struct wlr_box which_box(struct wio_server *server);
-struct wlr_box canon_box(struct wio_server *server, struct wlr_box box);
 void wio_view_focus(struct wio_view *view, struct wlr_surface *surface);
 struct wio_view *wio_view_at(struct wio_server *server, double lx, double ly,
 		struct wlr_surface **surface, double *sx, double *sy);
 void wio_view_move(struct wio_view *view, int x, int y);
+struct wlr_box wio_which_box(struct wio_server *server);
+struct wlr_box wio_canon_box(struct wio_server *server, struct wlr_box box);
 
 #endif

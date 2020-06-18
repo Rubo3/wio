@@ -214,7 +214,7 @@ static void view_end_interactive(struct wio_server *server) {
 }
 
 static void new_view(struct wio_server *server) {
-	struct wlr_box box = which_box(server);
+	struct wlr_box box = wio_which_box(server);
 	if (box.width < MINWIDTH || box.height < MINHEIGHT) {
 		return;
  	}
@@ -333,10 +333,10 @@ static void handle_button_internal(
             server->input_state = INPUT_STATE_RESIZE_END;
 			break;
         case INPUT_STATE_BORDER_DRAG:
-            box = which_box(server);
-            box = canon_box(server, box);
+            box = wio_which_box(server);
+            box = wio_canon_box(server, box);
 		case INPUT_STATE_RESIZE_END:
-			box = which_box(server);
+			box = wio_which_box(server);
 		    if (box.width < MINWIDTH || box.height < MINHEIGHT) {
                 view_end_interactive(server);
 			break;

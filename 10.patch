@@ -1,0 +1,220 @@
+From: Leonid Bobrov <goleo@disroot.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=disroot.org; s=mail;
+	t=1592466144; bh=LZ/kT/5N+fcARESbX+7pODVsnuihiWyaydDtA136F00=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=IpDHm1QpheyanEiL6C84cOWGUVdZPAbjj4M5n3CyXs1xbXybovlN4mx1USlgIKhHD
+	 YUDT0Va5XSrnboTt/UII/VbgdVb+xkJ7shk8DWDg8GWi+eKlu9Pu8S4w34/tHTexrC
+	 z1+6B2LAnleM9xvqPLJqEn0BWiNACImkaNN5hicvLCui6ZTc1qeu4s4yjrNxSkABxl
+	 /iNCJizD0csXoeP6BBJxvGj9M+1UVE0nMoVks0U6alK1oGGUMY8c/R6gvO9P+LXhMm
+	 9/YQduVpI1fdHs0aa6E3m0SZ6piQAwyMGXyQvo6yxcZV+HRRkgkJYgvYPkLEQEU3nr
+	 wXY3bOHTlSFWg==
+To: ~sircmpwn/wio@lists.sr.ht,
+	Leon Plickat <leonhenrik.plickat@stud.uni-goetttingen.de>
+Cc: Leonid Bobrov <goleo@disroot.org>
+Subject: [PATCH 10/11] Move and rename which_box and canon_box
+Date: Thu, 18 Jun 2020 10:39:53 +0300
+Message-Id: <20200618073954.189606-11-goleo@disroot.org>
+In-Reply-To: <20200618073954.189606-1-goleo@disroot.org>
+References: <20200618073954.189606-1-goleo@disroot.org>
+Mime-Version: 1.0
+Content-Transfer-Encoding: quoted-printable
+
+---
+ include/view.h |  4 +--
+ input.c        |  8 ++---
+ output.c       |  6 ++--
+ view.c         | 82 +++++++++++++++++++++++++-------------------------
+ 4 files changed, 50 insertions(+), 50 deletions(-)
+
+diff --git a/include/view.h b/include/view.h
+index 0899f9c..09f7e1a 100644
+--- a/include/view.h
++++ b/include/view.h
+@@ -33,10 +33,10 @@ enum wio_view_area {
+ void server_new_xdg_surface(struct wl_listener *listener, void *data);
+=20
+ void wio_view_focus(struct wio_view *view, struct wlr_surface *surface);
+-struct wlr_box which_box(struct wio_server *server);
+-struct wlr_box canon_box(struct wio_server *server, struct wlr_box box);
+ struct wio_view *wio_view_at(struct wio_server *server, double lx, doubl=
+e ly,
+ 		struct wlr_surface **surface, double *sx, double *sy);
+ void wio_view_move(struct wio_view *view, int x, int y);
++struct wlr_box wio_which_box(struct wio_server *server);
++struct wlr_box wio_canon_box(struct wio_server *server, struct wlr_box b=
+ox);
+=20
+ #endif
+diff --git a/input.c b/input.c
+index 9640b9c..6d76097 100644
+--- a/input.c
++++ b/input.c
+@@ -220,7 +220,7 @@ static void view_end_interactive(struct wio_server *s=
+erver) {
+ }
+=20
+ static void new_view(struct wio_server *server) {
+-	struct wlr_box box =3D which_box(server);
++	struct wlr_box box =3D wio_which_box(server);
+ 	if (box.width < MINWIDTH || box.height < MINHEIGHT) {
+ 		return;
+ 	}
+@@ -339,11 +339,11 @@ static void handle_button_internal(
+ 		server->input_state =3D INPUT_STATE_RESIZE_END;
+ 		break;
+ 	case INPUT_STATE_BORDER_DRAG:
+-		box =3D which_box(server);
+-		box =3D canon_box(server, box);
++		box =3D wio_which_box(server);
++		box =3D wio_canon_box(server, box);
+ 		goto Done;
+ 	case INPUT_STATE_RESIZE_END:
+-		box =3D which_box(server);
++		box =3D wio_which_box(server);
+ 		if (box.width < MINWIDTH || box.height < MINHEIGHT) {
+ 			view_end_interactive(server);
+ 			break;
+diff --git a/output.c b/output.c
+index 28efb2f..c6d3f81 100644
+--- a/output.c
++++ b/output.c
+@@ -311,8 +311,8 @@ static void output_frame(struct wl_listener *listener=
+, void *data) {
+ 	view =3D server->interactive.view;
+ 	switch (server->input_state) {
+ 	case INPUT_STATE_BORDER_DRAG:
+-		box =3D which_box(server);
+-		box =3D canon_box(server, box);
++		box =3D wio_which_box(server);
++		box =3D wio_canon_box(server, box);
+ 		render_view_border(renderer, output, NULL, box.x, box.y, box.width, bo=
+x.height, 1);
+ 		break;
+ 	case INPUT_STATE_MOVE:
+@@ -325,7 +325,7 @@ static void output_frame(struct wl_listener *listener=
+, void *data) {
+ 		break;
+ 	case INPUT_STATE_NEW_END:
+ 	case INPUT_STATE_RESIZE_END:
+-		box =3D which_box(server);
++		box =3D wio_which_box(server);
+ 		if (box.width > 0 && box.height > 0) {
+ 			memcpy(color, surface, sizeof(color));
+ 			wlr_render_rect(renderer, &box, color, output->wlr_output->transform_=
+matrix);
+diff --git a/view.c b/view.c
+index c768cc4..8ed91ee 100644
+--- a/view.c
++++ b/view.c
+@@ -145,7 +145,46 @@ static int which_corner(struct wlr_box *box, int x, =
+int y) {
+ 	return 3*j+i;
+ }
+=20
+-struct wlr_box which_box(struct wio_server *server) {
++struct wio_view *wio_view_at(struct wio_server *server, double lx, doubl=
+e ly,
++		struct wlr_surface **surface, double *sx, double *sy) {
++	struct wlr_box border_box =3D {
++		.x =3D 0, .y =3D 0,
++		.width =3D 0, .height =3D 0,
++	};
++	struct wio_view *view;
++	wl_list_for_each(view, &server->views, link) {
++		// Surface
++		if (view_at(view, lx, ly, surface, sx, sy)) {
++			view->area =3D VIEW_AREA_SURFACE;
++			return view;
++		}
++		// Border
++		border_box.x =3D view->x - window_border;
++		border_box.y =3D view->y - window_border;
++		border_box.width =3D view->xdg_surface->surface->current.width + windo=
+w_border * 2;
++		border_box.height =3D view->xdg_surface->surface->current.height + win=
+dow_border * 2;
++		if (wlr_box_contains_point(&border_box, lx, ly)) {
++			view->area =3D which_corner(&border_box, lx, ly);
++			*sx =3D lx - view->x;
++			*sy =3D ly - view->y;
++			return view;
++		}
++	}
++	return NULL;
++}
++
++void wio_view_move(struct wio_view *view, int x, int y) {
++	view->x =3D x;
++	view->y =3D y;
++
++	// Cheating as FUCK because I'm lazy
++	struct wio_output *output;
++	wl_list_for_each(output, &view->server->outputs, link) {
++		wlr_surface_send_enter(view->xdg_surface->surface, output->wlr_output)=
+;
++	}
++}
++
++struct wlr_box wio_which_box(struct wio_server *server) {
+ 	struct wlr_box box;
+ 	int x1, x2, y1, y2;
+=20
+@@ -215,49 +254,10 @@ struct wlr_box which_box(struct wio_server *server)=
+ {
+ 	return box;
+ }
+=20
+-struct wlr_box canon_box(struct wio_server *server, struct wlr_box box) =
+{
++struct wlr_box wio_canon_box(struct wio_server *server, struct wlr_box b=
+ox) {
+ 	static struct wlr_box cache;
+ 	if (box.width < MINWIDTH || box.height < MINHEIGHT) {
+ 		return cache;
+ 	}
+ 	return cache =3D box;
+ }
+-
+-struct wio_view *wio_view_at(struct wio_server *server, double lx, doubl=
+e ly,
+-		struct wlr_surface **surface, double *sx, double *sy) {
+-	struct wlr_box border_box =3D {
+-		.x =3D 0, .y =3D 0,
+-		.width =3D 0, .height =3D 0,
+-	};
+-	struct wio_view *view;
+-	wl_list_for_each(view, &server->views, link) {
+-		// Surface
+-		if (view_at(view, lx, ly, surface, sx, sy)) {
+-			view->area =3D VIEW_AREA_SURFACE;
+-			return view;
+-		}
+-		// Border
+-		border_box.x =3D view->x - window_border;
+-		border_box.y =3D view->y - window_border;
+-		border_box.width =3D view->xdg_surface->surface->current.width + windo=
+w_border * 2;
+-		border_box.height =3D view->xdg_surface->surface->current.height + win=
+dow_border * 2;
+-		if (wlr_box_contains_point(&border_box, lx, ly)) {
+-			view->area =3D which_corner(&border_box, lx, ly);
+-			*sx =3D lx - view->x;
+-			*sy =3D ly - view->y;
+-			return view;
+-		}
+-	}
+-	return NULL;
+-}
+-
+-void wio_view_move(struct wio_view *view, int x, int y) {
+-	view->x =3D x;
+-	view->y =3D y;
+-
+-	// Cheating as FUCK because I'm lazy
+-	struct wio_output *output;
+-	wl_list_for_each(output, &view->server->outputs, link) {
+-		wlr_surface_send_enter(view->xdg_surface->surface, output->wlr_output)=
+;
+-	}
+-}
+--=20
