@@ -275,6 +275,7 @@ static void output_frame(struct wl_listener *listener, void *data) {
 	struct wio_output *output = wl_container_of(listener, output, frame);
 	struct wio_server *server = output->server;
 	struct wlr_renderer *renderer = server->renderer;
+    int x, y, width, height, scale;
 
 	struct timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
@@ -310,39 +311,134 @@ static void output_frame(struct wl_listener *listener, void *data) {
 				render_surface, &rdata);
 	}
 	view = server->interactive.view;
+    scale = output->wlr_output->scale;
 	switch (server->input_state) {
+    case INPUT_STATE_BORDER_DRAG_TOP_RIGHT:
+		x = view->x;
+		y = server->cursor->y;
+		width = server->cursor->x - server->interactive.sx;
+		height = view->xdg_surface->surface->current.height - (server->cursor->y - server->interactive.sy);
+		if (height < MINHEIGHT && height > -MINHEIGHT) {
+			if (height < 0) {
+				height *= -1;
+				y -= height - window_border * 2 * scale;
+			} else {
+				y -= MINHEIGHT - height;
+			}
+			height = MINHEIGHT;
+		}
+		if (height < 0) {
+			height *= -1;
+			y -= height - window_border * 2 * scale;
+		}
+		goto Done;
+	case INPUT_STATE_BORDER_DRAG_TOP_LEFT:
+		x = server->cursor->x;
+		y = server->cursor->y;
+		width = view->xdg_surface->surface->current.width - (server->cursor->x - server->interactive.sx);
+		height = view->xdg_surface->surface->current.height - (server->cursor->y - server->interactive.sy);
+		if (width < MINWIDTH && width > -MINWIDTH) {
+			if (width < 0) {
+				width *= -1;
+				x -= width - window_border * 2 * scale;
+			} else {
+				x -= MINWIDTH - width;
+			}
+			width = MINWIDTH;
+		}
+		if (height < MINHEIGHT && height > -MINHEIGHT) {
+			if (height < 0) {
+				height *= -1;
+				y -= height - window_border * 2 * scale;
+			} else {
+				y -= MINHEIGHT - height;
+			}
+			height = MINHEIGHT;
+		}
+		if (width < 0) {
+			width *= -1;
+			x -= width - window_border * 2 * scale;
+		}
+		if (height < 0) {
+			height *= -1;
+			y -= height - window_border * 2 * scale;
+		}
+		goto Done;
 	case INPUT_STATE_BORDER_DRAG_TOP:
-		render_view_border(renderer, output, view,
-			view->x,
-			server->cursor->y,
-			view->xdg_surface->surface->current.width,
-			view->xdg_surface->surface->current.height - (server->cursor->y - server->interactive.sy),
-			1);
-		break;
-	case INPUT_STATE_BORDER_DRAG_LEFT:
-		render_view_border(renderer, output, view,
-			server->cursor->x,
-			view->y,
-			view->xdg_surface->surface->current.width - (server->cursor->x - server->interactive.sx),
-			view->xdg_surface->surface->current.height,
-			1);
-		break;
+		x = view->x;
+		y = server->cursor->y;
+		width = view->xdg_surface->surface->current.width;
+		height = view->xdg_surface->surface->current.height - (server->cursor->y - server->interactive.sy);
+		if (height < MINHEIGHT && height > -MINHEIGHT) {
+			if (height < 0) {
+				height *= -1;
+				y -= height - window_border * 2 * scale;
+			} else {
+				y -= MINHEIGHT - height;
+			}
+			height = MINHEIGHT;
+		}
+		if (height < 0) {
+			height *= -1;
+			y -= height - window_border * 2 * scale;
+		}
+		goto Done;
+	case INPUT_STATE_BORDER_DRAG_BOTTOM_RIGHT:
+		x = view->x;
+		y = view->y;
+		width = server->cursor->x - server->interactive.sx;
+		height = server->cursor->y - server->interactive.sy;
+		goto Done;
+	case INPUT_STATE_BORDER_DRAG_BOTTOM_LEFT:
+		x = server->cursor->x;
+		y = view->y;
+		width = view->xdg_surface->surface->current.width - (server->cursor->x - server->interactive.sx);
+		height = server->cursor->y - server->interactive.sy;
+		if (width < MINWIDTH && width > -MINWIDTH) {
+			if (width < 0) {
+				width *= -1;
+				x -= width - window_border * 2 * scale;
+			} else {
+				x -= MINWIDTH - width;
+			}
+			width = MINWIDTH;
+		}
+		if (width < 0) {
+			width *= -1;
+			x -= width - window_border * 2 * scale;
+		}
+		goto Done;
 	case INPUT_STATE_BORDER_DRAG_BOTTOM:
-		render_view_border(renderer, output, view,
-			view->x,
-			view->y,
-			view->xdg_surface->surface->current.width,
-			server->cursor->y - server->interactive.sy,
-			1);
-		break;
+		x = view->x;
+		y = view->y;
+		width = view->xdg_surface->surface->current.width;
+		height = server->cursor->y - server->interactive.sy;
+        goto Done;
 	case INPUT_STATE_BORDER_DRAG_RIGHT:
-		render_view_border(renderer, output, view,
-			view->x,
-			view->y,
-			server->cursor->x - server->interactive.sx,
-			view->xdg_surface->surface->current.height,
-			1);
-		break;
+		x = view->x;
+		y = view->y;
+		width = server->cursor->x - server->interactive.sx;
+		height = view->xdg_surface->surface->current.height;
+		goto Done;
+	case INPUT_STATE_BORDER_DRAG_LEFT:
+		x = server->cursor->x;
+		y = view->y;
+		width = view->xdg_surface->surface->current.width - (server->cursor->x - server->interactive.sx);
+		height = view->xdg_surface->surface->current.height;
+		if (width < MINWIDTH && width > -MINWIDTH) {
+			if (width < 0) {
+				width *= -1;
+				x -= width - window_border * 2 * scale;
+			} else {
+				x -= MINWIDTH - width;
+			}
+			width = MINWIDTH;
+		}
+		if (width < 0) {
+			width *= -1;
+			x -= width - window_border * 2 * scale;
+		}
+		goto Done;
 	case INPUT_STATE_MOVE:
 		render_view_border(renderer, output, view,
 			server->cursor->x - server->interactive.sx,
@@ -353,16 +449,26 @@ static void output_frame(struct wl_listener *listener, void *data) {
 		break;
 	case INPUT_STATE_NEW_END:
 	case INPUT_STATE_RESIZE_END:
-		x1 = server->cursor->x < server->interactive.sx ?
-			server->cursor->x : server->interactive.sx;
-		y1 = server->cursor->y < server->interactive.sy ?
-			server->cursor->y : server->interactive.sy;
-		x2 = server->cursor->x > server->interactive.sx ?
-			server->cursor->x : server->interactive.sx;
-		y2 = server->cursor->y > server->interactive.sy ?
-			server->cursor->y : server->interactive.sy;
-
-		render_view_border(renderer, output, NULL, x1, y1, x2 - x1, y2 - y1, 1);
+		x = server->interactive.sx;
+		y = server->interactive.sy;
+		width = server->cursor->x - server->interactive.sx;
+		height = server->cursor->y - server->interactive.sy;
+	Done:
+		if (width < 0) {
+			width *= -1;
+			x -= ((width < MINWIDTH) ? MINWIDTH : width) + window_border * 2 * scale;
+		}
+		if (height < 0) {
+			height *= -1;
+			y -= ((height < MINHEIGHT) ? MINHEIGHT : height) + window_border * 2 * scale;
+		}
+		if (width < MINWIDTH) {
+			width = MINWIDTH;
+		}
+		if (height < MINHEIGHT) {
+			height = MINHEIGHT;
+		}
+		render_view_border(renderer, output, NULL, x, y, width, height, 1);
 		break;
 	default:
 		break;

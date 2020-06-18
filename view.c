@@ -123,56 +123,55 @@ static bool view_at(struct wio_view *view,
 }
 
 struct wio_view *wio_view_at(struct wio_server *server, double lx, double ly,
-		struct wlr_surface **surface, double *sx, double *sy,
-		int *view_area) {
+		struct wlr_surface **surface, double *sx, double *sy) {
 	struct wlr_box border_box = {
 		.x = 0, .y = 0,
 		.width = 0, .height = 0,
 	};
 	struct wio_view *view;
 	wl_list_for_each(view, &server->views, link) {
+        view->area = VIEW_AREA_NONE;
+        
 		// Surface
 		if (view_at(view, lx, ly, surface, sx, sy)) {
-			*view_area = VIEW_AREA_SURFACE;
+			view->area = VIEW_AREA_SURFACE;
 			return view;
 		}
 		// Top border
 		border_box.height = window_border;
-		border_box.width = view->xdg_surface->surface->current.width;
-		border_box.x = view->x;
+		border_box.width = view->xdg_surface->surface->current.width + window_border * 2;
+		border_box.x = view->x - window_border;
 		border_box.y = view->y - window_border;
 		if (wlr_box_contains_point(&border_box, server->cursor->x, server->cursor->y)) {
-			*view_area = VIEW_AREA_BORDER_TOP;
-			return view;
+			view->area = VIEW_AREA_BORDER_TOP;
+			goto SideBorder;
 		}
 
-		// Right border
-		border_box.height = view->xdg_surface->surface->current.height;
-		border_box.width = window_border;
-		border_box.x = view->x + view->xdg_surface->surface->current.width;
-		border_box.y = view->y;
-		if (wlr_box_contains_point(&border_box, server->cursor->x, server->cursor->y)) {
-			*view_area = VIEW_AREA_BORDER_RIGHT;
-			return view;
-		}
-
-		// Bottom border
-		border_box.height = window_border;
-		border_box.width = view->xdg_surface->surface->current.width;
-		border_box.x = view->x;
+        // Bottom border
 		border_box.y = view->y + view->xdg_surface->surface->current.height;
 		if (wlr_box_contains_point(&border_box, server->cursor->x, server->cursor->y)) {
-			*view_area = VIEW_AREA_BORDER_BOTTOM;
+			view->area = VIEW_AREA_BORDER_BOTTOM;
+ 		}
+ 
+	SideBorder:
+		// Right border
+		border_box.height = view->xdg_surface->surface->current.height + window_border * 2;
+		border_box.width = window_border;
+		border_box.x = view->x + view->xdg_surface->surface->current.width;
+		border_box.y = view->y - window_border;
+		if (wlr_box_contains_point(&border_box, server->cursor->x, server->cursor->y)) {
+			view->area |= VIEW_AREA_BORDER_RIGHT;
 			return view;
 		}
 
 		// Left border
-		border_box.height = view->xdg_surface->surface->current.height;
-		border_box.width = window_border;
 		border_box.x = view->x - window_border;
-		border_box.y = view->y;
 		if (wlr_box_contains_point(&border_box, server->cursor->x, server->cursor->y)) {
-			*view_area = VIEW_AREA_BORDER_LEFT;
+			view->area |= VIEW_AREA_BORDER_LEFT;
+			return view;
+		}
+
+		if (view->area != VIEW_AREA_NONE) {
 			return view;
 		}
 	}
