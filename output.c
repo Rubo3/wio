@@ -269,6 +269,7 @@ static void render_layer(
 }
 
 static void output_frame(struct wl_listener *listener, void *data) {
+	double x1, x2, y1, y2;
 	struct wio_output *output = wl_container_of(listener, output, frame);
 	struct wio_server *server = output->server;
 	struct wlr_renderer *renderer = server->renderer;
@@ -350,11 +351,16 @@ static void output_frame(struct wl_listener *listener, void *data) {
 		break;
 	case INPUT_STATE_NEW_END:
 	case INPUT_STATE_RESIZE_END:
-		render_view_border(renderer, output, NULL,
-			server->interactive.sx, server->interactive.sy,
-			server->cursor->x - server->interactive.sx,
-			server->cursor->y - server->interactive.sy,
-			1);
+		x1 = server->cursor->x < server->interactive.sx ?
+			server->cursor->x : server->interactive.sx;
+		y1 = server->cursor->y < server->interactive.sy ?
+			server->cursor->y : server->interactive.sy;
+		x2 = server->cursor->x > server->interactive.sx ?
+			server->cursor->x : server->interactive.sx;
+		y2 = server->cursor->y > server->interactive.sy ?
+			server->cursor->y : server->interactive.sy;
+
+		render_view_border(renderer, output, NULL, x1, y1, x2 - x1, y2 - y1, 1);
 		break;
 	default:
 		break;
