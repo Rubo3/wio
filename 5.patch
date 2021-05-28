@@ -1,0 +1,38 @@
+From: Willy Goiffon <contact@z3bra.org>
+To: ~sircmpwn/wio@lists.sr.ht
+Subject: [PATCH] Enable output to start from VT
+Message-ID: <X7JADWuCVTaaNgsH@doom.qw.is>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+This fixes #17, where the compositor fails to run when started from a
+bare VT.
+
+---
+ output.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/output.c b/output.c
+index 6244b7f..a88d8ac 100644
+--- a/output.c
++++ b/output.c
+@@ -469,14 +469,17 @@ void server_new_output(struct wl_listener *listener, void *data) {
+ 		if (config->transform) {
+ 			wlr_output_set_transform(wlr_output, config->transform);
+ 		}
++		wlr_output_enable(wlr_output, true);
+ 	} else {
+ 		struct wlr_output_mode *mode =
+ 			wlr_output_preferred_mode(wlr_output);
+ 		if (mode) {
+ 			wlr_output_set_mode(wlr_output, mode);
+ 		}
++		wlr_output_enable(wlr_output, true);
+ 		wlr_output_layout_add_auto(server->output_layout, wlr_output);
+ 	}
+ 
++	wlr_output_commit(wlr_output);
+ 	wlr_output_create_global(wlr_output);
+ }
+-- 

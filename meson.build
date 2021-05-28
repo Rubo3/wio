@@ -32,10 +32,11 @@ wlroots_proj = subproject(
 if wlroots_proj.found()
 	wlroots = wlroots_proj.get_variable('wlroots')
 else
-	wlroots = dependency('wlroots')
+	wlroots = dependency('wlroots', version: '>=0.13.0')
 endif
 
 cairo = dependency('cairo')
+drm = dependency('libdrm')
 math = cc.find_library('m')
 wayland_server = dependency('wayland-server')
 wayland_protos = dependency('wayland-protocols')
@@ -59,6 +60,7 @@ executable(
 	include_directories: [wio_inc],
 	dependencies: [
 		cairo,
+		drm,
 		math,
 		server_protos,
 		wayland_server,
