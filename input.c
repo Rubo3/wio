@@ -11,31 +11,26 @@
 #include <wlr/util/log.h>
 #include <xkbcommon/xkbcommon.h>
 #include <unistd.h>
+
 #include "server.h"
 #include "view.h"
 
-static void keyboard_handle_modifiers(
-		struct wl_listener *listener, void *data) {
-	struct wio_keyboard *keyboard =
-		wl_container_of(listener, keyboard, modifiers);
+static void keyboard_handle_modifiers( struct wl_listener *listener, void *data) {
+	struct wio_keyboard *keyboard = wl_container_of(listener, keyboard, modifiers);
 	wlr_seat_set_keyboard(keyboard->server->seat, keyboard->device);
 	wlr_seat_keyboard_notify_modifiers(keyboard->server->seat,
 		&keyboard->device->keyboard->modifiers);
 }
 
 static void view_end_interactive(struct wio_server *server);
-static void keyboard_handle_key(
-		struct wl_listener *listener, void *data) {
-	struct wio_keyboard *keyboard =
-		wl_container_of(listener, keyboard, key);
+static void keyboard_handle_key(struct wl_listener *listener, void *data) {
+	struct wio_keyboard *keyboard = wl_container_of(listener, keyboard, key);
 	struct wio_server *server = keyboard->server;
 	struct wlr_event_keyboard_key *event = data;
 	struct wlr_seat *seat = server->seat;
 	xkb_keycode_t keycode = event->keycode + 8;
 	const xkb_keysym_t *syms;
-	int nsyms = xkb_state_key_get_syms(
-		keyboard->device->keyboard->xkb_state,
-		keycode, &syms);
+	int nsyms = xkb_state_key_get_syms(keyboard->device->keyboard->xkb_state, keycode, &syms);
 
 	for (int i = 0; i < nsyms; i++) {
 		if (syms[i] == XKB_KEY_Escape) {
@@ -51,12 +46,10 @@ static void keyboard_handle_key(
 	}
 
 	wlr_seat_set_keyboard(seat, keyboard->device);
-	wlr_seat_keyboard_notify_key(seat, event->time_msec,
-		event->keycode, event->state);
+	wlr_seat_keyboard_notify_key(seat, event->time_msec, event->keycode, event->state);
 }
 
-static void server_new_keyboard(
-		struct wio_server *server, struct wlr_input_device *device) {
+static void server_new_keyboard( struct wio_server *server, struct wlr_input_device *device) {
 	struct wio_keyboard *keyboard = calloc(1, sizeof(struct wio_keyboard));
 	keyboard->server = server;
 	keyboard->device = device;
@@ -85,8 +78,7 @@ static void server_new_keyboard(
 	wl_list_insert(&server->keyboards, &keyboard->link);
 }
 
-static void server_new_pointer(
-		struct wio_server *server, struct wlr_input_device *device) {
+static void server_new_pointer(struct wio_server *server, struct wlr_input_device *device) {
 	wlr_cursor_attach_input_device(server->cursor, device);
 }
 
@@ -192,8 +184,7 @@ void server_cursor_motion_absolute(
 	process_cursor_motion(server, event->time_msec);
 }
 
-static void menu_handle_button(
-		struct wio_server *server, struct wlr_event_pointer_button *event) {
+static void menu_handle_button(struct wio_server *server, struct wlr_event_pointer_button *event) {
 	server->menu.x = server->menu.y = -1;
 	switch (server->menu.selected) {
 	case 0:
@@ -243,8 +234,8 @@ static void view_end_interactive(struct wio_server *server) {
 }
 
 static void new_view(struct wio_server *server) {
-	int x1 = server->interactive.sx - window_border, x2 = server->cursor->x - window_border;
-	int y1 = server->interactive.sy - window_border, y2 = server->cursor->y - window_border;
+	int x1 = server->interactive.sx, x2 = server->cursor->x;
+	int y1 = server->interactive.sy, y2 = server->cursor->y;
 	if (x2 < x1) {
 		int _ = x1;
 		x1 = x2;
@@ -325,208 +316,209 @@ static void handle_button_internal(
 	int x1, x2, y1, y2;
 	uint32_t width, height;
 	switch (server->input_state) {
-	case INPUT_STATE_NONE:
-		if (event->state == WLR_BUTTON_PRESSED && event->button == BTN_RIGHT) {
-			// TODO: Open over the last-used menu item
-			server->input_state = INPUT_STATE_MENU;
-			server->menu.x = server->cursor->x;
-			server->menu.y = server->cursor->y;
-		}
-		break;
-	case INPUT_STATE_MENU:
-		if (wlr_box_contains_point(
-					&menu_box, server->cursor->x, server->cursor->y)) {
-			menu_handle_button(server, event);
-		} else {
+		case INPUT_STATE_NONE:
+			if (event->state == WLR_BUTTON_PRESSED && event->button == BTN_RIGHT) {
+				// TODO: Open over the last-used menu item
+				server->input_state = INPUT_STATE_MENU;
+				server->menu.x = server->cursor->x;
+				server->menu.y = server->cursor->y;
+			}
+			break;
+		case INPUT_STATE_MENU:
+			if (wlr_box_contains_point(
+						&menu_box, server->cursor->x, server->cursor->y)) {
+				menu_handle_button(server, event);
+			} else {
+				if (event->state == WLR_BUTTON_PRESSED) {
+					server->input_state = INPUT_STATE_NONE;
+					server->menu.x = server->menu.y = -1;
+				}
+			}
+			break;
+		case INPUT_STATE_NEW_START:
 			if (event->state == WLR_BUTTON_PRESSED) {
-				server->input_state = INPUT_STATE_NONE;
-				server->menu.x = server->menu.y = -1;
+				server->interactive.sx = server->cursor->x;
+				server->interactive.sy = server->cursor->y;
+				server->input_state = INPUT_STATE_NEW_END;
 			}
-		}
-		break;
-	case INPUT_STATE_NEW_START:
-		if (event->state == WLR_BUTTON_PRESSED) {
-			server->interactive.sx = server->cursor->x;
-			server->interactive.sy = server->cursor->y;
-			server->input_state = INPUT_STATE_NEW_END;
-		}
-		break;
-	case INPUT_STATE_NEW_END:
-		new_view(server);
-		view_end_interactive(server);
-		break;
-	case INPUT_STATE_RESIZE_SELECT:
-		if (event->state == WLR_BUTTON_PRESSED) {
-			double sx, sy;
-			int view_area;
-			struct wlr_surface *surface = NULL;
-			struct wio_view *view = wio_view_at(server,
-					server->cursor->x, server->cursor->y, &surface, &sx, &sy,
-					&view_area);
-			if (view != NULL) {
-				view_begin_interactive(view, surface, sx, sy,
-						"bottom_right_corner", INPUT_STATE_RESIZE_START);
-			} else {
-				view_end_interactive(server);
-			}
-		}
-		break;
-	case INPUT_STATE_RESIZE_START:
-		if (event->state == WLR_BUTTON_PRESSED) {
-			server->interactive.sx = server->cursor->x;
-			server->interactive.sy = server->cursor->y;
-			server->input_state = INPUT_STATE_RESIZE_END;
-		}
-		break;
-	case INPUT_STATE_BORDER_DRAG_TOP:
-		y1 = server->interactive.view->y + server->interactive.view->xdg_surface->surface->current.height;
-		y2 = server->cursor->y;
-		x1 = server->interactive.view->x;
-		if (y2 < y1) {
-			int _ = y1;
-			y1 = y2;
-			y2 = _;
-		}
-		wio_view_move(server->interactive.view,
-				x1, y1);
-		width = server->interactive.view->xdg_surface->surface->current.width;
-		height = y2 - y1;
-		if (height < 100) {
-			height = 100;
-		}
-		wlr_xdg_toplevel_set_size(
-				server->interactive.view->xdg_surface, width, height);
-		view_end_interactive(server);
-		break;
-	case INPUT_STATE_BORDER_DRAG_LEFT:
-		x1 = server->interactive.view->x + server->interactive.view->xdg_surface->surface->current.width;
-		x2 = server->cursor->x;
-		y1 = server->interactive.view->y;
-		if (x2 < x1) {
-			int _ = x1;
-			x1 = x2;
-			x2 = _;
-		}
-		wio_view_move(server->interactive.view,
-				x1, y1);
-		width = x2 - x1;
-		height = server->interactive.view->xdg_surface->surface->current.height;
-		if (width < 100) {
-			width = 100;
-		}
-		wlr_xdg_toplevel_set_size(
-				server->interactive.view->xdg_surface, width, height);
-		view_end_interactive(server);
-		break;
-	case INPUT_STATE_BORDER_DRAG_BOTTOM:
-		x1 = server->interactive.view->x;
-		y1 = server->interactive.view->y, y2 = server->cursor->y;
-		if (y2 < y1) {
-			int _ = y1;
-			y1 = y2;
-			y2 = _;
-		}
-		wio_view_move(server->interactive.view,
-				x1, y1);
-		width = server->interactive.view->xdg_surface->surface->current.width;
-		height = y2 - y1;
-		if (width < 100) {
-			width = 100;
-		}
-		wlr_xdg_toplevel_set_size(
-				server->interactive.view->xdg_surface, width, height);
-		view_end_interactive(server);
-		break;
-	case INPUT_STATE_BORDER_DRAG_RIGHT:
-		x1 = server->interactive.view->x, x2 = server->cursor->x;
-		y1 = server->interactive.view->y;
-		if (x2 < x1) {
-			int _ = x1;
-			x1 = x2;
-			x2 = _;
-		}
-		wio_view_move(server->interactive.view,
-				x1, y1);
-		width = x2 - x1;
-		height = server->interactive.view->xdg_surface->surface->current.height;
-		if (width < 100) {
-			width = 100;
-		}
-		wlr_xdg_toplevel_set_size(
-				server->interactive.view->xdg_surface, width, height);
-		view_end_interactive(server);
-		break;
-	case INPUT_STATE_RESIZE_END:
-		x1 = server->interactive.sx - window_border, x2 = server->cursor->x - window_border;
-		y1 = server->interactive.sy - window_border, y2 = server->cursor->y - window_border;
-		if (x2 < x1) {
-			int _ = x1;
-			x1 = x2;
-			x2 = _;
-		}
-		if (y2 < y1) {
-			int _ = y1;
-			y1 = y2;
-			y2 = _;
-		}
-		wio_view_move(server->interactive.view,
-				x1, y1);
-		width = x2 - x1, height = y2 - y1;
-		if (width < 100) {
-			width = 100;
-		}
-		if (height < 100) {
-			height = 100;
-		}
-		wlr_xdg_toplevel_set_size(
-				server->interactive.view->xdg_surface, width, height);
-		view_end_interactive(server);
-		break;
-	case INPUT_STATE_MOVE_SELECT:
-		if (event->state == WLR_BUTTON_PRESSED) {
-			double sx, sy;
-			int view_area;
-			struct wlr_surface *surface = NULL;
-			struct wio_view *view = wio_view_at(server,
-					server->cursor->x, server->cursor->y, &surface, &sx, &sy,
-					&view_area);
-			if (view != NULL) {
-				view_begin_interactive(view, surface, sx, sy,
-						"grabbing", INPUT_STATE_MOVE);
-			} else {
-				view_end_interactive(server);
-			}
-		}
-		break;
-	case INPUT_STATE_MOVE:
-		wio_view_move(server->interactive.view,
-			server->cursor->x - server->interactive.sx,
-			server->cursor->y - server->interactive.sy);
-		view_end_interactive(server);
-		break;
-	case INPUT_STATE_DELETE_SELECT:
-		if (event->state == WLR_BUTTON_PRESSED) {
-			double sx, sy;
-			int view_area;
-			struct wlr_surface *surface = NULL;
-			struct wio_view *view = wio_view_at(server,
-					server->cursor->x, server->cursor->y, &surface, &sx, &sy,
-					&view_area);
-			if (view != NULL) {
-				wlr_xdg_toplevel_send_close(view->xdg_surface);
-			}
+			break;
+		case INPUT_STATE_NEW_END:
+			new_view(server);
 			view_end_interactive(server);
-		}
-		break;
-	default:
-		// TODO
-		break;
+			break;
+		case INPUT_STATE_RESIZE_SELECT:
+			if (event->state == WLR_BUTTON_PRESSED) {
+				double sx, sy;
+				int view_area;
+				struct wlr_surface *surface = NULL;
+				struct wio_view *view = wio_view_at(server,
+						server->cursor->x, server->cursor->y, &surface, &sx, &sy,
+						&view_area);
+				if (view != NULL) {
+					view_begin_interactive(view, surface, sx, sy,
+							"bottom_right_corner", INPUT_STATE_RESIZE_START);
+				} else {
+					view_end_interactive(server);
+				}
+			}
+			break;
+		case INPUT_STATE_RESIZE_START:
+			if (event->state == WLR_BUTTON_PRESSED) {
+				server->interactive.sx = server->cursor->x;
+				server->interactive.sy = server->cursor->y;
+				server->input_state = INPUT_STATE_RESIZE_END;
+			}
+			break;
+		case INPUT_STATE_BORDER_DRAG_TOP:
+			y1 = server->interactive.view->y
+				+ server->interactive.view->xdg_surface->surface->current.height;
+			y2 = server->cursor->y;
+			x1 = server->interactive.view->x;
+			if (y2 < y1) {
+				int _ = y1;
+				y1 = y2;
+				y2 = _;
+			}
+			wio_view_move(server->interactive.view,
+					x1, y1);
+			width = server->interactive.view->xdg_surface->surface->current.width;
+			height = y2 - y1;
+			if (height < 100) {
+				height = 100;
+			}
+			wlr_xdg_toplevel_set_size(
+					server->interactive.view->xdg_surface, width, height);
+			view_end_interactive(server);
+			break;
+		case INPUT_STATE_BORDER_DRAG_LEFT:
+			x1 = server->interactive.view->x
+				+ server->interactive.view->xdg_surface->surface->current.width;
+			x2 = server->cursor->x;
+			y1 = server->interactive.view->y;
+			if (x2 < x1) {
+				int _ = x1;
+				x1 = x2;
+				x2 = _;
+			}
+			wio_view_move(server->interactive.view,
+					x1, y1);
+			width = x2 - x1;
+			height = server->interactive.view->xdg_surface->surface->current.height;
+			if (width < 100) {
+				width = 100;
+			}
+			wlr_xdg_toplevel_set_size(
+					server->interactive.view->xdg_surface, width, height);
+			view_end_interactive(server);
+			break;
+		case INPUT_STATE_BORDER_DRAG_BOTTOM:
+			x1 = server->interactive.view->x;
+			y1 = server->interactive.view->y, y2 = server->cursor->y;
+			if (y2 < y1) {
+				int _ = y1;
+				y1 = y2;
+				y2 = _;
+			}
+			wio_view_move(server->interactive.view,
+					x1, y1);
+			width = server->interactive.view->xdg_surface->surface->current.width;
+			height = y2 - y1;
+			if (width < 100) {
+				width = 100;
+			}
+			wlr_xdg_toplevel_set_size(
+					server->interactive.view->xdg_surface, width, height);
+			view_end_interactive(server);
+			break;
+		case INPUT_STATE_BORDER_DRAG_RIGHT:
+			x1 = server->interactive.view->x, x2 = server->cursor->x;
+			y1 = server->interactive.view->y;
+			if (x2 < x1) {
+				int _ = x1;
+				x1 = x2;
+				x2 = _;
+			}
+			wio_view_move(server->interactive.view,
+					x1, y1);
+			width = x2 - x1;
+			height = server->interactive.view->xdg_surface->surface->current.height;
+			if (width < 100) {
+				width = 100;
+			}
+			wlr_xdg_toplevel_set_size(
+					server->interactive.view->xdg_surface, width, height);
+			view_end_interactive(server);
+			break;
+		case INPUT_STATE_RESIZE_END:
+			x1 = server->interactive.sx, x2 = server->cursor->x;
+			y1 = server->interactive.sy, y2 = server->cursor->y;
+			if (x2 < x1) {
+				int _ = x1;
+				x1 = x2;
+				x2 = _;
+			}
+			if (y2 < y1) {
+				int _ = y1;
+				y1 = y2;
+				y2 = _;
+			}
+			wio_view_move(server->interactive.view,
+					x1, y1);
+			width = x2 - x1, height = y2 - y1;
+			if (width < 100) {
+				width = 100;
+			}
+			if (height < 100) {
+				height = 100;
+			}
+			wlr_xdg_toplevel_set_size(
+					server->interactive.view->xdg_surface, width, height);
+			view_end_interactive(server);
+			break;
+		case INPUT_STATE_MOVE_SELECT:
+			if (event->state == WLR_BUTTON_PRESSED) {
+				double sx, sy;
+				int view_area;
+				struct wlr_surface *surface = NULL;
+				struct wio_view *view = wio_view_at(server,
+						server->cursor->x, server->cursor->y, &surface, &sx, &sy,
+						&view_area);
+				if (view != NULL) {
+					view_begin_interactive(view, surface, sx, sy,
+							"grabbing", INPUT_STATE_MOVE);
+				} else {
+					view_end_interactive(server);
+				}
+			}
+			break;
+		case INPUT_STATE_MOVE:
+			wio_view_move(server->interactive.view,
+				server->cursor->x - server->interactive.sx,
+				server->cursor->y - server->interactive.sy);
+			view_end_interactive(server);
+			break;
+		case INPUT_STATE_DELETE_SELECT:
+			if (event->state == WLR_BUTTON_PRESSED) {
+				double sx, sy;
+				int view_area;
+				struct wlr_surface *surface = NULL;
+				struct wio_view *view = wio_view_at(server,
+						server->cursor->x, server->cursor->y, &surface, &sx, &sy,
+						&view_area);
+				if (view != NULL) {
+					wlr_xdg_toplevel_send_close(view->xdg_surface);
+				}
+				view_end_interactive(server);
+			}
+			break;
+		default:
+			// TODO
+			break;
 	}
 }
 
 void server_cursor_button(struct wl_listener *listener, void *data) {
-	struct wio_server *server =
-		wl_container_of(listener, server, cursor_button);
+	struct wio_server *server = wl_container_of(listener, server, cursor_button);
 	struct wlr_event_pointer_button *event = data;
 	double sx, sy;
 	struct wlr_surface *surface = NULL;
