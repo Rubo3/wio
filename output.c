@@ -437,14 +437,17 @@ void server_new_output(struct wl_listener *listener, void *data) {
 		if (config->transform) {
 			wlr_output_set_transform(wlr_output, config->transform);
 		}
+		wlr_output_enable(wlr_output, true);
 	} else {
 		struct wlr_output_mode *mode =
 			wlr_output_preferred_mode(wlr_output);
 		if (mode) {
 			wlr_output_set_mode(wlr_output, mode);
 		}
+		wlr_output_enable(wlr_output, true);
 		wlr_output_layout_add_auto(server->output_layout, wlr_output);
 	}
 
+	wlr_output_commit(wlr_output);
 	wlr_output_create_global(wlr_output);
 }
