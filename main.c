@@ -1,6 +1,8 @@
 #define _POSIX_C_SOURCE 200809L
+
 #include <assert.h>
 #include <cairo/cairo.h>
+#include <drm_fourcc.h>
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +16,6 @@
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_export_dmabuf_v1.h>
 #include <wlr/types/wlr_gamma_control_v1.h>
-// #include <wlr/types/wlr_gtk_primary_selection.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_primary_selection_v1.h>
 #include <wlr/types/wlr_screencopy_v1.h>
@@ -23,22 +24,21 @@
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/types/wlr_xdg_output_v1.h>
 #include <wlr/util/log.h>
-#include <drm_fourcc.h>
+
 #include "layers.h"
 #include "server.h"
 #include "view.h"
 
 static void gen_menu_textures(struct wio_server *server) {
 	struct wlr_renderer *renderer = server->renderer;
-	cairo_surface_t *surf = cairo_image_surface_create(
-			CAIRO_FORMAT_ARGB32, 128, 128); // numbers pulled from ass
+	// numbers pulled from ass
+	cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 128, 128);
 	cairo_t *cairo = cairo_create(surf);
-	cairo_select_font_face(cairo, "monospace",
-			CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+	cairo_select_font_face(cairo, "monospace", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
 	cairo_set_font_size(cairo, 14);
 	cairo_set_source_rgb(cairo, 0, 0, 0);
 
-	char *text[] = { "New", "Resize", "Move", "Delete", "Hide" };
+	char *text[] = {"New", "Resize", "Move", "Delete", "Hide"};
 	for (size_t i = 0; i < sizeof(text) / sizeof(text[0]); ++i) {
 		cairo_set_operator(cairo, CAIRO_OPERATOR_CLEAR);
 		cairo_paint(cairo);
@@ -99,58 +99,65 @@ static enum wl_output_transform str_to_transform(const char *str) {
 	}
 }
 
-int main(int argc, char **argv) {
-	struct wio_server server = { 0 };
+void parse_args(int argc, char *argv[], struct wio_server *server) {
+	int c;
+	while ((c = getopt(argc, argv, "c:t:o:h")) != -1) {
+		switch (c) {
+			case 'c':
+				server->cage = optarg;
+				break;
+			case 't':
+				server->term = optarg;
+				break;
+			case 'o':;
+				// name:x:y:width:height:scale:transform
+				struct wio_output_config *config =
+					calloc(1, sizeof(struct wio_output_config));
+				wl_list_insert(&server->output_configs, &config->link);
+				const char *tok = strtok(optarg, ":");
+				assert(tok);
+				config->name = strdup(tok);
+				tok = strtok(NULL, ":");
+				assert(tok);
+				config->x = atoi(tok);
+				tok = strtok(NULL, ":");
+				assert(tok);
+				config->y = atoi(tok);
+				tok = strtok(NULL, ":");
+				if (!tok)
+					break;
+				config->width = atoi(tok);
+				tok = strtok(NULL, ":");
+				assert(tok);
+				config->height = atoi(tok);
+				tok = strtok(NULL, ":");
+				if (!tok)
+					break;
+				config->scale = atoi(tok);
+				tok = strtok(NULL, ":");
+				if (!tok)
+					break;
+				config->transform = str_to_transform(tok);
+				break;
+			case 'h':
+				printf("Usage: %s [-t <term>] [-c <cage>] [-o <output config>...]\n",
+						argv[0]);
+				exit(0);
+			default:
+				fprintf(stderr, "Unrecognized option %c\n", c);
+				exit(1);
+		}
+	}
+}
+
+int main(int argc, char *argv[]) {
+	struct wio_server server = {0};
 	server.cage = "cage -d";
 	server.term = "alacritty";
 	wlr_log_init(WLR_DEBUG, NULL);
 	wl_list_init(&server.output_configs);
 
-	int c;
-	while ((c = getopt(argc, argv, "c:t:o:h")) != -1) {
-		switch (c) {
-		case 'c':
-			server.cage = optarg;
-			break;
-		case 't':
-			server.term = optarg;
-			break;
-		case 'o':;
-			// name:x:y:width:height:scale:transform
-			struct wio_output_config *config =
-				calloc(1, sizeof(struct wio_output_config));
-			wl_list_insert(&server.output_configs, &config->link);
-			const char *tok = strtok(optarg, ":");
-			assert(tok);
-			config->name = strdup(tok);
-			tok = strtok(NULL, ":");
-			assert(tok);
-			config->x = atoi(tok);
-			tok = strtok(NULL, ":");
-			assert(tok);
-			config->y = atoi(tok);
-			tok = strtok(NULL, ":");
-			if (!tok) break;
-			config->width = atoi(tok);
-			tok = strtok(NULL, ":");
-			assert(tok);
-			config->height = atoi(tok);
-			tok = strtok(NULL, ":");
-			if (!tok) break;
-			config->scale = atoi(tok);
-			tok = strtok(NULL, ":");
-			if (!tok) break;
-			config->transform = str_to_transform(tok);
-			break;
-		case 'h':
-			printf("Usage: %s [-t <term>] [-c <cage>] [-o <output config>...]\n",
-					argv[0]);
-			return 0;
-		default:
-			fprintf(stderr, "Unrecognized option %c\n", c);
-			return 1;
-		}
-	}
+	parse_args(argc, argv, &server);
 
 	server.wl_display = wl_display_create();
 	server.backend = wlr_backend_autocreate(server.wl_display);
@@ -166,7 +173,7 @@ int main(int argc, char **argv) {
 	wlr_primary_selection_v1_device_manager_create(server.wl_display);
 
 	wlr_gamma_control_manager_v1_create(server.wl_display);
-//	wlr_gtk_primary_selection_device_manager_create(server.wl_display);
+	// wlr_gtk_primary_selection_device_manager_create(server.wl_display);
 
 	wl_list_init(&server.outputs);
 	server.new_output.notify = server_new_output;
@@ -190,8 +197,7 @@ int main(int argc, char **argv) {
 	server.cursor_motion.notify = server_cursor_motion;
 	wl_signal_add(&server.cursor->events.motion, &server.cursor_motion);
 	server.cursor_motion_absolute.notify = server_cursor_motion_absolute;
-	wl_signal_add(&server.cursor->events.motion_absolute,
-			&server.cursor_motion_absolute);
+	wl_signal_add(&server.cursor->events.motion_absolute, &server.cursor_motion_absolute);
 	server.cursor_button.notify = server_cursor_button;
 	wl_signal_add(&server.cursor->events.button, &server.cursor_button);
 	server.cursor_axis.notify = server_cursor_axis;
@@ -205,23 +211,20 @@ int main(int argc, char **argv) {
 
 	server.seat = wlr_seat_create(server.wl_display, "seat0");
 	server.request_cursor.notify = seat_request_cursor;
-	wl_signal_add(&server.seat->events.request_set_cursor,
-			&server.request_cursor);
+	wl_signal_add(&server.seat->events.request_set_cursor, &server.request_cursor);
 	wl_list_init(&server.keyboards);
 	wl_list_init(&server.pointers);
 
 	wl_list_init(&server.views);
 	server.xdg_shell = wlr_xdg_shell_create(server.wl_display);
 	server.new_xdg_surface.notify = server_new_xdg_surface;
-	wl_signal_add(&server.xdg_shell->events.new_surface,
-			&server.new_xdg_surface);
+	wl_signal_add(&server.xdg_shell->events.new_surface, &server.new_xdg_surface);
 
 	wl_list_init(&server.new_views);
 
 	server.layer_shell = wlr_layer_shell_v1_create(server.wl_display);
 	server.new_layer_surface.notify = server_new_layer_surface;
-	wl_signal_add(&server.layer_shell->events.new_surface,
-			&server.new_layer_surface);
+	wl_signal_add(&server.layer_shell->events.new_surface, &server.new_layer_surface);
 
 	server.menu.x = server.menu.y = -1;
 	gen_menu_textures(&server);
@@ -240,8 +243,7 @@ int main(int argc, char **argv) {
 	}
 
 	setenv("WAYLAND_DISPLAY", socket, true);
-	wlr_log(WLR_INFO,
-			"Running Wayland compositor on WAYLAND_DISPLAY=%s", socket);
+	wlr_log(WLR_INFO, "Running Wayland compositor on WAYLAND_DISPLAY=%s", socket);
 	wl_display_run(server.wl_display);
 
 	wl_display_destroy_clients(server.wl_display);
