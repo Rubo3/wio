@@ -340,6 +340,7 @@ static void handle_button_internal(
         case INPUT_STATE_BORDER_DRAG:
             box = wio_which_box(server);
             box = wio_canon_box(server, box);
+            goto Done;
 		case INPUT_STATE_RESIZE_END:
 			box = wio_which_box(server);
 		    if (box.width < MINWIDTH || box.height < MINHEIGHT) {

@@ -271,7 +271,6 @@ static void render_layer(
 }
 
 static void output_frame(struct wl_listener *listener, void *data) {
-	double x1, x2, y1, y2;
 	struct wio_output *output = wl_container_of(listener, output, frame);
 	struct wio_server *server = output->server;
 	struct wlr_renderer *renderer = server->renderer;
