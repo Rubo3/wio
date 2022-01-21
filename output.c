@@ -72,8 +72,8 @@ static void render_menu(struct wio_output *output) {
 		int width, height;
 		// Assumes inactive/active textures are the same size
 		// (they probably are)
-		wlr_texture_get_size(
-				server->menu.inactive_textures[i], &width, &height);
+		width = server->menu.inactive_textures[i]->width;
+		height = server->menu.inactive_textures[i]->height;
 		width /= scale, height /= scale;
 		text_height += height + margin;
 		if (width >= text_width) {
@@ -138,7 +138,8 @@ static void render_menu(struct wio_output *output) {
 	for (size_t i = 0; i < ntextures; ++i) {
 		int width, height;
 		struct wlr_texture *texture = server->menu.inactive_textures[i];
-		wlr_texture_get_size(texture, &width, &height);
+		width = texture->width;
+		height = texture->height;
 		width /= scale, height /= scale;
 		struct wlr_box box = { 0 };
 		box.x = ox - scale /* fudge */;
@@ -152,7 +153,8 @@ static void render_menu(struct wio_output *output) {
 			wlr_render_rect(renderer, &box, menu_selected,
 					output->wlr_output->transform_matrix);
 		} else {
-			wlr_texture_get_size(texture, &width, &height);
+			width = texture->width;
+            height = texture->height;
 			width /= scale, height /= scale;
 		}
 		box.x = (ox + (text_width / 2 - width / 2)) * scale;
