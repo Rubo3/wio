@@ -226,15 +226,14 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 }
 
 static void handle_destroy(struct wl_listener *listener, void *data) {
-	struct wio_layer_surface *layer = wl_container_of(
-			listener, layer, destroy);
+	struct wio_layer_surface *layer = wl_container_of(listener, layer, destroy);
 	wl_list_remove(&layer->link);
 	wl_list_remove(&layer->destroy.link);
 	wl_list_remove(&layer->map.link);
 	wl_list_remove(&layer->surface_commit.link);
 	if (layer->layer_surface->output) {
 		wl_list_remove(&layer->output_destroy.link);
-		arrange_layers((struct wio_output *)layer->layer_surface->output->data);
+		arrange_layers((struct wio_output *) layer->layer_surface->output->data);
 	}
 	free(layer);
 }

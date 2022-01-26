@@ -4,9 +4,10 @@
 #include <math.h>
 #include <time.h>
 #include <wayland-server.h>
+#include <wlr/render/allocator.h>
+#include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/types/wlr_output.h>
-#include <wlr/render/wlr_renderer.h>
 #include <wlr/util/box.h>
 
 #include "colors.h"
@@ -175,24 +176,24 @@ static void render_menu(struct wio_output *output) {
 }
 
 static void render_view_border(struct wlr_renderer *renderer,
-		struct wio_output *output, struct wio_view *view,
-		int x, int y, int width, int height,
-		int selection) {
+							   struct wio_output *output, struct wio_view *view,
+							   int x, int y, int width, int height, int selection) {
 	float color[4];
-	if (selection) {
+
+	if (selection)
 		memcpy(color, selection_box, sizeof(color));
-	} else if (!view || view->xdg_surface->toplevel->current.activated) {
+	else if (!view || view->xdg_surface->toplevel->current.activated)
 		memcpy(color, active_border, sizeof(color));
-	} else {
+	else
 		memcpy(color, inactive_border, sizeof(color));
-	}
+
 	struct wlr_output *wlr_output = output->wlr_output;
 	int scale = wlr_output->scale;
 	double ox = 0, oy = 0;
-	wlr_output_layout_output_coords(
-			output->server->output_layout, wlr_output, &ox, &oy);
+	wlr_output_layout_output_coords(output->server->output_layout, wlr_output, &ox, &oy);
 	ox *= scale, oy *= scale;
 	struct wlr_box borders;
+
 	// Top
 	borders.x = (x - window_border) * scale;
 	borders.x += ox;
@@ -201,6 +202,7 @@ static void render_view_border(struct wlr_renderer *renderer,
 	borders.width = (width + window_border * 2) * scale;
 	borders.height = window_border * scale;
 	wlr_render_rect(renderer, &borders, color, wlr_output->transform_matrix);
+
 	// Right
 	borders.x = (x + width) * scale;
 	borders.x += ox;
@@ -209,6 +211,7 @@ static void render_view_border(struct wlr_renderer *renderer,
 	borders.width = window_border * scale;
 	borders.height = (height + window_border * 2) * scale;
 	wlr_render_rect(renderer, &borders, color, wlr_output->transform_matrix);
+
 	// Bottom
 	borders.x = (x - window_border) * scale;
 	borders.x += ox;
@@ -217,6 +220,7 @@ static void render_view_border(struct wlr_renderer *renderer,
 	borders.width = (width + window_border * 2) * scale;
 	borders.height = window_border * scale;
 	wlr_render_rect(renderer, &borders, color, wlr_output->transform_matrix);
+
 	// Left
 	borders.x = (x - window_border) * scale;
 	borders.x += ox;
@@ -235,12 +239,12 @@ struct render_data_layer {
 };
 
 static void render_layer_surface(struct wlr_surface *surface,
-		int sx, int sy, void *data) {
+								 int sx, int sy, void *data) {
 	struct wio_layer_surface *layer_surface = data;
 	struct wlr_texture *texture = wlr_surface_get_texture(surface);
-	if (texture == NULL) {
+	if (texture == NULL)
 		return;
-	}
+
 	struct wlr_output *output = layer_surface->layer_surface->output;
 	double ox = 0, oy = 0;
 	wlr_output_layout_output_coords(
@@ -354,9 +358,10 @@ static void output_frame(struct wl_listener *listener, void *data) {
 }
 
 void server_new_output(struct wl_listener *listener, void *data) {
-	struct wio_server *server =
-		wl_container_of(listener, server, new_output);
+	struct wio_server *server = wl_container_of(listener, server, new_output);
 	struct wlr_output *wlr_output = data;
+
+	wlr_output_init_render(wlr_output, server->allocator, server->renderer);
 
 	struct wio_output *output = calloc(1, sizeof(struct wio_output));
 	output->wlr_output = wlr_output;
@@ -380,15 +385,15 @@ void server_new_output(struct wl_listener *listener, void *data) {
 	}
 
 	if (config) {
-		if (config->x == -1 && config->y == -1) {
+		if (config->x == -1 && config->y == -1)
 			wlr_output_layout_add_auto(server->output_layout, wlr_output);
-		} else {
+		else {
 			wlr_output_layout_add(server->output_layout, wlr_output,
 					config->x, config->y);
 		}
 		bool modeset = false;
 		if (config->width && config->height
-				&& !wl_list_empty(&wlr_output->modes)) {
+		&& !wl_list_empty(&wlr_output->modes)) {
 			struct wlr_output_mode *mode;
 			wl_list_for_each(mode, &wlr_output->modes, link) {
 				if (mode->width == config->width
@@ -401,23 +406,18 @@ void server_new_output(struct wl_listener *listener, void *data) {
 		if (!modeset) {
 			struct wlr_output_mode *mode =
 				wlr_output_preferred_mode(wlr_output);
-			if (mode) {
+			if (mode)
 				wlr_output_set_mode(wlr_output, mode);
-			}
 		}
-		if (config->scale) {
+		if (config->scale)
 			wlr_output_set_scale(wlr_output, config->scale);
-		}
-		if (config->transform) {
+		if (config->transform)
 			wlr_output_set_transform(wlr_output, config->transform);
-		}
 		wlr_output_enable(wlr_output, true);
 	} else {
-		struct wlr_output_mode *mode =
-			wlr_output_preferred_mode(wlr_output);
-		if (mode) {
+		struct wlr_output_mode *mode = wlr_output_preferred_mode(wlr_output);
+		if (mode)
 			wlr_output_set_mode(wlr_output, mode);
-		}
 		wlr_output_enable(wlr_output, true);
 		wlr_output_layout_add_auto(server->output_layout, wlr_output);
 	}

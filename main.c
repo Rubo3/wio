@@ -21,6 +21,7 @@
 #include <wlr/types/wlr_primary_selection_v1.h>
 #include <wlr/types/wlr_screencopy_v1.h>
 #include <wlr/types/wlr_seat.h>
+// #include <wlr/types/wlr_subcompositor.h> WLROOTS 16 (https://gitlab.com/Rubo/wio/-/blob/master/main.c#L166)
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/types/wlr_xdg_output_v1.h>
@@ -112,8 +113,7 @@ void parse_args(int argc, char *argv[], struct wio_server *server) {
 			break;
 		case 'o':;
 			// name:x:y:width:height:scale:transform
-			struct wio_output_config *config =
-				calloc(1, sizeof(struct wio_output_config));
+			struct wio_output_config *config = calloc(1, sizeof(struct wio_output_config));
 			wl_list_insert(&server->output_configs, &config->link);
 			const char *tok = strtok(optarg, ":");
 			assert(tok);
@@ -141,8 +141,7 @@ void parse_args(int argc, char *argv[], struct wio_server *server) {
 			config->transform = str_to_transform(tok);
 			break;
 		case 'h':
-			printf("Usage: %s [-t <term>] [-c <cage>] [-o <output config>...]\n",
-					argv[0]);
+			printf("Usage: %s [-t <term>] [-c <cage>] [-o <output config>...]\n", argv[0]);
 			exit(0);
 		default:
 			fprintf(stderr, "Unrecognized option %c\n", c);
@@ -155,6 +154,7 @@ int main(int argc, char *argv[]) {
 	struct wio_server server = {0};
 	server.cage = "cage -d";
 	server.term = "alacritty";
+
 	wlr_log_init(WLR_DEBUG, NULL);
 	wl_list_init(&server.output_configs);
 
@@ -167,6 +167,7 @@ int main(int argc, char *argv[]) {
 	wlr_renderer_init_wl_display(server.renderer, server.wl_display);
 
 	wlr_compositor_create(server.wl_display, server.renderer);
+	// wlr_subcompositor_create(server.wl_display); // WLROOTS 16
 	wlr_data_device_manager_create(server.wl_display);
 
 	wlr_export_dmabuf_manager_v1_create(server.wl_display);
@@ -191,9 +192,8 @@ int main(int argc, char *argv[]) {
 
 	struct wio_output_config *config;
 	wl_list_for_each(config, &server.output_configs, link) {
-		if (config->scale > 1){
+		if (config->scale > 1)
 			wlr_xcursor_manager_load(server.cursor_mgr, config->scale);
-		}
 	}
 
 	server.cursor_motion.notify = server_cursor_motion;
