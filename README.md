@@ -7,14 +7,18 @@ This software is incomplete. Notably missing is a Rio-esque FUSE filesystem and
 Rio's built-in command line (we depend on an external, tty-style terminal
 emulator).
 
+Note: This repository contains the original `wio` [source code](https://git.sr.ht/~sircmpwn/wio), with some of the [patches](https://lists.sr.ht/~sircmpwn/wio/patches) which were not mainlined, and some fixes to build it against the latest version of [`wlroots`](https://gitlab.freedesktop.org/wlroots/wlroots) (currently with the version [15.0](https://gitlab.freedesktop.org/wlroots/wlroots/-/issues/2983) it's broken).
+
 ## Installation
 
 To build and install wio:
 
-    git clone https://github.com/swaywm/wlroots.git subprojects/wlroots
-    meson build
-    cd build
-    ninja install
+```sh
+git clone https://github.com/swaywm/wlroots.git subprojects/wlroots
+meson build
+cd build
+ninja install
+```
 
 ## Basic principles
 
@@ -47,7 +51,9 @@ application windows which is supported directly by Wio is xdg-shell.
 Some minor customization options are available by passing command line arguments
 to Wio:
 
-    wio [-c <cage>] [-t <terminal>] [-o <output config>...]
+```sh
+wio [-c <cage>] [-t <terminal>] [-o <output config>...]
+```
 
 - **-c &lt;cage&gt;**: specifies the `cage` command to run new windows in
 - **-t &lt;term&gt;**: specifies the terminal command to run new windows in
@@ -99,10 +105,3 @@ configuration:
 - `XKB_DEFAULT_OPTIONS`
 
 Read `xkeyboard-config(7)` for details.
-
-## Patches, bugs, etc
-
-Patches, questions, feedback, and general discussions to the mailing list:
-[~sircmpwn/wio@lists.sr.ht](https://lists.sr.ht/~sircmpwn/wio).
-
-Tickets on the [bug tracker](https://todo.sr.ht/~sircmpwn/wio).
