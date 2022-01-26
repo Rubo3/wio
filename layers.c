@@ -2,6 +2,8 @@
 #include <string.h>
 #include <wayland-server.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
+#include <wlr/util/box.h>
+
 #include "layers.h"
 #include "server.h"
 
@@ -135,7 +137,7 @@ static void arrange_layer(struct wlr_output *output,
 		}
 		if (box.width < 0 || box.height < 0) {
 			// TODO: Bubble up a protocol error?
-			wlr_layer_surface_v1_close(layer);
+			wlr_layer_surface_v1_destroy(layer);
 			continue;
 		}
 
@@ -209,7 +211,7 @@ static void handle_output_destroy(struct wl_listener *listener, void *data) {
 		wl_container_of(listener, layer, output_destroy);
 	layer->layer_surface->output = NULL;
 	wl_list_remove(&layer->output_destroy.link);
-	wlr_layer_surface_v1_close(layer->layer_surface);
+	wlr_layer_surface_v1_destroy(layer->layer_surface);
 }
 
 static void handle_surface_commit(struct wl_listener *listener, void *data) {
@@ -275,11 +277,11 @@ void server_new_layer_surface(struct wl_listener *listener, void *data) {
 	// TODO: popups
 
 	// TODO: Listen for subsurfaces
-	wl_list_insert(&output->layers[layer_surface->client_pending.layer], &wio_surface->link);
-	// Temporarily set the layer's current state to client_pending
+	wl_list_insert(&output->layers[layer_surface->pending.layer], &wio_surface->link);
+	// Temporarily set the layer's current state to `pending`
 	// So that we can easily arrange it
 	struct wlr_layer_surface_v1_state old_state = layer_surface->current;
-	layer_surface->current = layer_surface->client_pending;
+	layer_surface->current = layer_surface->pending;
 	arrange_layers(output);
 	layer_surface->current = old_state;
 }

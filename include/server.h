@@ -3,8 +3,8 @@
 #include <signal.h>
 #include <wayland-server.h>
 #include <wlr/backend.h>
+#include <wlr/render/allocator.h>
 #include <wlr/render/wlr_renderer.h>
-#include <wlr/types/wlr_box.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_keyboard.h>
@@ -13,6 +13,7 @@
 #include <wlr/types/wlr_pointer.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/types/wlr_xdg_shell.h>
+#include <wlr/util/box.h>
 
 static const int window_border = 5;
 
@@ -36,6 +37,7 @@ struct wio_server {
 
 	const char *cage, *term;
 
+	struct wlr_allocator *allocator;
 	struct wlr_backend *backend;
 	struct wlr_cursor *cursor;
 	struct wlr_output_layout *output_layout;

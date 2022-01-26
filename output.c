@@ -7,6 +7,8 @@
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/render/wlr_renderer.h>
+#include <wlr/util/box.h>
+
 #include "colors.h"
 #include "layers.h"
 #include "server.h"

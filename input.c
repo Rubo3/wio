@@ -8,6 +8,7 @@
 #include <wlr/types/wlr_input_device.h>
 #include <wlr/types/wlr_keyboard.h>
 #include <wlr/types/wlr_pointer.h>
+#include <wlr/util/box.h>
 #include <wlr/util/log.h>
 #include <xkbcommon/xkbcommon.h>
 #include <unistd.h>
@@ -34,7 +35,7 @@ static void keyboard_handle_key(struct wl_listener *listener, void *data) {
 	struct wio_server *server = keyboard->server;
 	struct wlr_event_keyboard_key *event = data;
 	struct wlr_seat *seat = server->seat;
-	
+
 	wlr_seat_set_keyboard(seat, keyboard->device);
 	wlr_seat_keyboard_notify_key(seat, event->time_msec, event->keycode, event->state);
 }

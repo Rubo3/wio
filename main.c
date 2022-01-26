@@ -9,6 +9,7 @@
 #include <time.h>
 #include <wayland-server.h>
 #include <wlr/backend.h>
+#include <wlr/render/allocator.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/render/wlr_texture.h>
 #include <wlr/types/wlr_compositor.h>
@@ -161,7 +162,8 @@ int main(int argc, char *argv[]) {
 
 	server.wl_display = wl_display_create();
 	server.backend = wlr_backend_autocreate(server.wl_display);
-	server.renderer = wlr_backend_get_renderer(server.backend);
+	server.renderer = wlr_renderer_autocreate(server.backend);
+	server.allocator = wlr_allocator_autocreate(server.backend, server.renderer);
 	wlr_renderer_init_wl_display(server.renderer, server.wl_display);
 
 	wlr_compositor_create(server.wl_display, server.renderer);

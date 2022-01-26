@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <wayland-server.h>
 #include <wlr/types/wlr_xdg_shell.h>
+#include <wlr/util/box.h>
+
 #include "xdg-shell-protocol.h"
 #include "server.h"
 #include "view.h"
