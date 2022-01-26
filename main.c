@@ -80,21 +80,21 @@ static void gen_menu_textures(struct wio_server *server) {
 static enum wl_output_transform str_to_transform(const char *str) {
 	if (strcmp(str, "normal") == 0 || strcmp(str, "0") == 0) {
 		return WL_OUTPUT_TRANSFORM_NORMAL;
-	} else if (strcmp(str, "90") == 0) {
+	} else if (strcmp(str, "90") == 0)
 		return WL_OUTPUT_TRANSFORM_90;
-	} else if (strcmp(str, "180") == 0) {
+	else if (strcmp(str, "180") == 0)
 		return WL_OUTPUT_TRANSFORM_180;
-	} else if (strcmp(str, "270") == 0) {
+	else if (strcmp(str, "270") == 0)
 		return WL_OUTPUT_TRANSFORM_270;
-	} else if (strcmp(str, "flipped") == 0) {
+	else if (strcmp(str, "flipped") == 0)
 		return WL_OUTPUT_TRANSFORM_FLIPPED;
-	} else if (strcmp(str, "flipped-90") == 0) {
+	else if (strcmp(str, "flipped-90") == 0)
 		return WL_OUTPUT_TRANSFORM_FLIPPED_90;
-	} else if (strcmp(str, "flipped-180") == 0) {
+	else if (strcmp(str, "flipped-180") == 0)
 		return WL_OUTPUT_TRANSFORM_FLIPPED_180;
-	} else if (strcmp(str, "flipped-270") == 0) {
+	else if (strcmp(str, "flipped-270") == 0)
 		return WL_OUTPUT_TRANSFORM_FLIPPED_270;
-	} else {
+	else {
 		fprintf(stderr, "Invalid output transform %s\n", str);
 		exit(1);
 	}
@@ -104,49 +104,49 @@ void parse_args(int argc, char *argv[], struct wio_server *server) {
 	int c;
 	while ((c = getopt(argc, argv, "c:t:o:h")) != -1) {
 		switch (c) {
-			case 'c':
-				server->cage = optarg;
+		case 'c':
+			server->cage = optarg;
+			break;
+		case 't':
+			server->term = optarg;
+			break;
+		case 'o':;
+			// name:x:y:width:height:scale:transform
+			struct wio_output_config *config =
+				calloc(1, sizeof(struct wio_output_config));
+			wl_list_insert(&server->output_configs, &config->link);
+			const char *tok = strtok(optarg, ":");
+			assert(tok);
+			config->name = strdup(tok);
+			tok = strtok(NULL, ":");
+			assert(tok);
+			config->x = atoi(tok);
+			tok = strtok(NULL, ":");
+			assert(tok);
+			config->y = atoi(tok);
+			tok = strtok(NULL, ":");
+			if (!tok)
 				break;
-			case 't':
-				server->term = optarg;
+			config->width = atoi(tok);
+			tok = strtok(NULL, ":");
+			assert(tok);
+			config->height = atoi(tok);
+			tok = strtok(NULL, ":");
+			if (!tok)
 				break;
-			case 'o':;
-				// name:x:y:width:height:scale:transform
-				struct wio_output_config *config =
-					calloc(1, sizeof(struct wio_output_config));
-				wl_list_insert(&server->output_configs, &config->link);
-				const char *tok = strtok(optarg, ":");
-				assert(tok);
-				config->name = strdup(tok);
-				tok = strtok(NULL, ":");
-				assert(tok);
-				config->x = atoi(tok);
-				tok = strtok(NULL, ":");
-				assert(tok);
-				config->y = atoi(tok);
-				tok = strtok(NULL, ":");
-				if (!tok)
-					break;
-				config->width = atoi(tok);
-				tok = strtok(NULL, ":");
-				assert(tok);
-				config->height = atoi(tok);
-				tok = strtok(NULL, ":");
-				if (!tok)
-					break;
-				config->scale = atoi(tok);
-				tok = strtok(NULL, ":");
-				if (!tok)
-					break;
-				config->transform = str_to_transform(tok);
+			config->scale = atoi(tok);
+			tok = strtok(NULL, ":");
+			if (!tok)
 				break;
-			case 'h':
-				printf("Usage: %s [-t <term>] [-c <cage>] [-o <output config>...]\n",
-						argv[0]);
-				exit(0);
-			default:
-				fprintf(stderr, "Unrecognized option %c\n", c);
-				exit(1);
+			config->transform = str_to_transform(tok);
+			break;
+		case 'h':
+			printf("Usage: %s [-t <term>] [-c <cage>] [-o <output config>...]\n",
+					argv[0]);
+			exit(0);
+		default:
+			fprintf(stderr, "Unrecognized option %c\n", c);
+			exit(1);
 		}
 	}
 }
