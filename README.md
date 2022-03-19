@@ -7,7 +7,7 @@ This software is incomplete. Notably missing is a Rio-esque FUSE filesystem and
 Rio's built-in command line (we depend on an external, tty-style terminal
 emulator).
 
-Note: This repository contains the original `wio` [source code](https://git.sr.ht/~sircmpwn/wio), with some of the [patches](https://lists.sr.ht/~sircmpwn/wio/patches) which were not mainlined, and some fixes to build it against the latest version of [`wlroots`](https://gitlab.freedesktop.org/wlroots/wlroots) (currently 15.0, at the moment it doesn't work with NVIDIA cards).
+Note: This repository contains the original `wio` [source code](https://git.sr.ht/~sircmpwn/wio), with some of the [patches](https://lists.sr.ht/~sircmpwn/wio/patches) which were not mainlined, and some fixes to build it against the latest version of [`wlroots`](https://gitlab.freedesktop.org/wlroots/wlroots).
 
 ## Installation
 
