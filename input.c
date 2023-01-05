@@ -205,7 +205,7 @@ void
 server_cursor_motion(struct wl_listener *listener, void *data) {
 	struct wio_server *server = wl_container_of(listener, server, cursor_motion);
 	struct wlr_pointer_motion_event *event = data;
-	wlr_cursor_move(server->cursor, event->device, event->delta_x, event->delta_y);
+	wlr_cursor_move(server->cursor, &event->pointer->base, event->delta_x, event->delta_y);
 	process_cursor_motion(server, event->time_msec);
 }
 
@@ -213,7 +213,7 @@ void
 server_cursor_motion_absolute( struct wl_listener *listener, void *data) {
 	struct wio_server *server = wl_container_of(listener, server, cursor_motion_absolute);
 	struct wlr_pointer_motion_absolute_event *event = data;
-	wlr_cursor_warp_absolute(server->cursor, event->device, event->x, event->y);
+	wlr_cursor_warp_absolute(server->cursor, &event->pointer->base, event->x, event->y);
 	process_cursor_motion(server, event->time_msec);
 }
 
