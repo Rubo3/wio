@@ -106,7 +106,7 @@ struct wio_keyboard {
 	struct wl_list link;
 
 	struct wio_server *server;
-	struct wlr_input_device *device;
+	struct wlr_keyboard *wlr_keyboard;
 
 	struct wl_listener modifiers;
 	struct wl_listener key;
