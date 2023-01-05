@@ -58,7 +58,7 @@ void server_new_xdg_surface(struct wl_listener *listener, void *data) {
 	view->map.notify = xdg_surface_map;
 	wl_signal_add(&xdg_surface->events.map, &view->map);
 
-	wlr_xdg_toplevel_set_tiled(view->xdg_surface,
+	wlr_xdg_toplevel_set_tiled(view->xdg_surface->toplevel,
 		WLR_EDGE_LEFT | WLR_EDGE_RIGHT | WLR_EDGE_TOP | WLR_EDGE_BOTTOM);
 
 	pid_t pid;
@@ -73,8 +73,9 @@ void server_new_xdg_surface(struct wl_listener *listener, void *data) {
 		}
 		view->x = new_view->box.x;
 		view->y = new_view->box.y;
-		wlr_xdg_toplevel_set_size(xdg_surface,
-				new_view->box.width, new_view->box.height);
+		wlr_xdg_toplevel_set_size(xdg_surface->toplevel,
+				                  new_view->box.width,
+								  new_view->box.height);
 		wl_list_remove(&new_view->link);
 		free(new_view);
 		break;
@@ -96,10 +97,10 @@ void wio_view_focus(struct wio_view *view, struct wlr_surface *surface) {
 	if (prev_surface) {
 		struct wlr_xdg_surface *previous = wlr_xdg_surface_from_wlr_surface(
 				seat->keyboard_state.focused_surface);
-		wlr_xdg_toplevel_set_activated(previous, false);
+		wlr_xdg_toplevel_set_activated(previous->toplevel, false);
 	}
 	struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(seat);
-	wlr_xdg_toplevel_set_activated(view->xdg_surface, true);
+	wlr_xdg_toplevel_set_activated(view->xdg_surface->toplevel, true);
 	wlr_seat_keyboard_notify_enter(seat, view->xdg_surface->surface,
 			keyboard->keycodes, keyboard->num_keycodes, &keyboard->modifiers);
 	/* bring to front */
