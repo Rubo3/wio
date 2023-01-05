@@ -16,10 +16,8 @@ emulator).
 To build and install wio:
 
 ```sh
-git clone https://github.com/swaywm/wlroots.git subprojects/wlroots
 meson build
-cd build
-ninja install
+ninja -C build install
 ```
 
 ## Basic principles
