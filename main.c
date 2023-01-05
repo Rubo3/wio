@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
 	wl_list_init(&server.pointers);
 
 	wl_list_init(&server.views);
-	server.xdg_shell = wlr_xdg_shell_create(server.wl_display);
+	server.xdg_shell = wlr_xdg_shell_create(server.wl_display, 2);
 	server.new_xdg_surface.notify = server_new_xdg_surface;
 	wl_signal_add(&server.xdg_shell->events.new_surface, &server.new_xdg_surface);
 
