@@ -39,7 +39,7 @@ change_vt(struct wio_server *server, unsigned int vt) {
 }
 
 static bool
-server_handle_shortcut(struct wl_listener *listener, struct wlr_event_keyboard_key *event) {
+server_handle_shortcut(struct wl_listener *listener, struct wlr_keyboard_key_event *event) {
 	struct wio_keyboard *keyboard = wl_container_of(listener, keyboard, key);
 	struct wio_server   *server   = keyboard->server;
 
@@ -204,7 +204,7 @@ End:
 void
 server_cursor_motion(struct wl_listener *listener, void *data) {
 	struct wio_server *server = wl_container_of(listener, server, cursor_motion);
-	struct wlr_event_pointer_motion *event = data;
+	struct wlr_pointer_motion_event *event = data;
 	wlr_cursor_move(server->cursor, event->device, event->delta_x, event->delta_y);
 	process_cursor_motion(server, event->time_msec);
 }
@@ -212,13 +212,13 @@ server_cursor_motion(struct wl_listener *listener, void *data) {
 void
 server_cursor_motion_absolute( struct wl_listener *listener, void *data) {
 	struct wio_server *server = wl_container_of(listener, server, cursor_motion_absolute);
-	struct wlr_event_pointer_motion_absolute *event = data;
+	struct wlr_pointer_motion_absolute_event *event = data;
 	wlr_cursor_warp_absolute(server->cursor, event->device, event->x, event->y);
 	process_cursor_motion(server, event->time_msec);
 }
 
 static void
-menu_handle_button(struct wio_server *server, struct wlr_event_pointer_button *event) {
+menu_handle_button(struct wio_server *server, struct wlr_pointer_button_event *event) {
 	server->menu.x = server->menu.y = -1;
 	switch (server->menu.selected) {
 	case 0:
@@ -318,7 +318,7 @@ new_view(struct wio_server *server) {
 }
 
 static void
-handle_button_internal(struct wio_server *server, struct wlr_event_pointer_button *event) {
+handle_button_internal(struct wio_server *server, struct wlr_pointer_button_event *event) {
 	// TODO: open menu if the client doesn't handle the button press
 	// will basically involve some serial hacking
 	struct wlr_box menu_box = {
@@ -432,7 +432,7 @@ handle_button_internal(struct wio_server *server, struct wlr_event_pointer_butto
 void
 server_cursor_button(struct wl_listener *listener, void *data) {
 	struct wio_server *server = wl_container_of(listener, server, cursor_button);
-	struct wlr_event_pointer_button *event = data;
+	struct wlr_pointer_button_event *event = data;
 	double sx, sy;
 	struct wlr_surface *surface = NULL;
 	struct wio_view *view = NULL;
@@ -467,7 +467,7 @@ server_cursor_button(struct wl_listener *listener, void *data) {
 void
 server_cursor_axis(struct wl_listener *listener, void *data) {
 	struct wio_server *server = wl_container_of(listener, server, cursor_axis);
-	struct wlr_event_pointer_axis *event = data;
+	struct wlr_pointer_axis_event *event = data;
 	wlr_seat_pointer_notify_axis(server->seat, event->time_msec,
 							     event->orientation, event->delta,
 								 event->delta_discrete, event->source);
