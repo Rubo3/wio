@@ -57,7 +57,7 @@ void server_new_xdg_surface(struct wl_listener *listener, void *data) {
 	view->destroy.notify = xdg_surface_destroy;
 	wl_signal_add(&xdg_surface->events.destroy, &view->destroy);
 	view->map.notify = xdg_surface_map;
-	wl_signal_add(&xdg_surface->events.map, &view->map);
+	wl_signal_add(&xdg_surface->surface->events.map, &view->map);
 
 	wlr_xdg_toplevel_set_tiled(view->xdg_surface->toplevel,
 		WLR_EDGE_LEFT | WLR_EDGE_RIGHT | WLR_EDGE_TOP | WLR_EDGE_BOTTOM);

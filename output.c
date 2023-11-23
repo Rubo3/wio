@@ -299,7 +299,7 @@ static void output_frame(struct wl_listener *listener, void *data) {
 
 	struct wio_view *view;
 	wl_list_for_each_reverse(view, &server->views, link) {
-		if (!view->xdg_surface->mapped) {
+		if (!view->xdg_surface->surface->mapped) {
 			continue;
 		}
 		struct render_data rdata = {

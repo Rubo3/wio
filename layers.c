@@ -272,7 +272,7 @@ void server_new_layer_surface(struct wl_listener *listener, void *data) {
 	wio_surface->destroy.notify = handle_destroy;
 	wl_signal_add(&layer_surface->events.destroy, &wio_surface->destroy);
 	wio_surface->map.notify = handle_map;
-	wl_signal_add(&layer_surface->events.map, &wio_surface->map);
+	wl_signal_add(&layer_surface->surface->events.map, &wio_surface->map);
 	// TODO: popups
 
 	// TODO: Listen for subsurfaces
