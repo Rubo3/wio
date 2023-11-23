@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdlib.h>
 #include <wayland-server.h>
 #include <wlr/types/wlr_xdg_shell.h>
@@ -95,8 +96,8 @@ void wio_view_focus(struct wio_view *view, struct wlr_surface *surface) {
 		return;
 	}
 	if (prev_surface) {
-		struct wlr_xdg_surface *previous = wlr_xdg_surface_from_wlr_surface(
-				seat->keyboard_state.focused_surface);
+		struct wlr_xdg_surface *previous = wlr_xdg_surface_try_from_wlr_surface(prev_surface);
+		assert(previous);
 		wlr_xdg_toplevel_set_activated(previous->toplevel, false);
 	}
 	struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(seat);
