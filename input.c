@@ -33,9 +33,8 @@ change_vt(struct wio_server *server, unsigned int vt) {
 	if (!wlr_backend_is_multi(server->backend)) {
 		return;
 	}
-	struct wlr_session *session = wlr_backend_get_session(server->backend);
-	if (session) {
-		wlr_session_change_vt(session, vt);
+	if (server->session) {
+		wlr_session_change_vt(server->session, vt);
 	}
 }
 

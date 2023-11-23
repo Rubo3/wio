@@ -39,6 +39,7 @@ struct wio_server {
 
 	struct wlr_allocator *allocator;
 	struct wlr_backend *backend;
+	struct wlr_session *session;
 	struct wlr_cursor *cursor;
 	struct wlr_output_layout *output_layout;
 	struct wlr_renderer *renderer;
