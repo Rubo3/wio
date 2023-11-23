@@ -162,26 +162,24 @@ process_cursor_motion(struct wio_server *server, uint32_t time) {
 	case INPUT_STATE_RESIZE_SELECT:
 	case INPUT_STATE_DELETE_SELECT:
 	case INPUT_STATE_HIDE_SELECT:
-		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr, "hand1", server->cursor);
+		wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, "hand1");
 		break;
 	case INPUT_STATE_MOVE:
-		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr, "grabbing", server->cursor);
+		wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, "grabbing");
 		break;
 	case INPUT_STATE_BORDER_DRAG:
-		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr, corner, server->cursor);
+		wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, corner);
 		break;
 	case INPUT_STATE_RESIZE_START:
 	case INPUT_STATE_NEW_START:
-		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
-											 "top_left_corner",
-											 server->cursor);
+		wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, "top_left_corner");
 		break;
 	case INPUT_STATE_RESIZE_END:
 	case INPUT_STATE_NEW_END:
-		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr, "grabbing", server->cursor);
+		wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, "grabbing");
 		break;
 	default:
-		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr, "left_ptr", server->cursor);
+		wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, "left_ptr");
 		break;
  	}
 End:
@@ -194,9 +192,7 @@ End:
 		return;
 	}
 	if (view) {
-		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr,
-										     corners[view->area],
-											 server->cursor);
+		wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, corners[view->area]);
 	}
 	wlr_seat_pointer_clear_focus(seat);
 }
@@ -223,19 +219,19 @@ menu_handle_button(struct wio_server *server, struct wlr_pointer_button_event *e
 	switch (server->menu.selected) {
 	case 0:
 		server->input_state = INPUT_STATE_NEW_START;
-		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr, "grabbing", server->cursor);
+		wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, "grabbing");
 		break;
 	case 1:
 		server->input_state = INPUT_STATE_RESIZE_SELECT;
-		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr, "hand1", server->cursor);
+		wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, "hand1");
 		break;
 	case 2:
 		server->input_state = INPUT_STATE_MOVE_SELECT;
-		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr, "hand1", server->cursor);
+		wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, "hand1");
 		break;
 	case 3:
 		server->input_state = INPUT_STATE_DELETE_SELECT;
-		wlr_xcursor_manager_set_cursor_image(server->cursor_mgr, "hand1", server->cursor);
+		wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, "hand1");
 		break;
 	default:
 		server->input_state = INPUT_STATE_NONE;
@@ -251,7 +247,7 @@ view_begin_interactive(struct wio_view *view, struct wlr_surface *surface, doubl
 	view->server->interactive.sx = (int)sx;
 	view->server->interactive.sy = (int)sy;
 	view->server->input_state = state;
-	wlr_xcursor_manager_set_cursor_image(view->server->cursor_mgr, cursor, view->server->cursor);
+	wlr_cursor_set_xcursor(view->server->cursor, view->server->cursor_mgr, cursor);
 }
 
 static void
@@ -259,7 +255,7 @@ view_end_interactive(struct wio_server *server) {
 	server->input_state = INPUT_STATE_NONE;
 	server->interactive.view = NULL;
 	// TODO: Restore previous pointer?
-	wlr_xcursor_manager_set_cursor_image(server->cursor_mgr, "left_ptr", server->cursor);
+	wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, "left_ptr");
 }
 
 static void
