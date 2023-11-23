@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <wlr/backend/multi.h>
+#include <wlr/backend/session.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_input_device.h>
