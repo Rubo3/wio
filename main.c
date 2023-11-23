@@ -166,8 +166,8 @@ int main(int argc, char *argv[]) {
 	server.allocator = wlr_allocator_autocreate(server.backend, server.renderer);
 	wlr_renderer_init_wl_display(server.renderer, server.wl_display);
 
-	uint32_t version = 5;
-	wlr_compositor_create(server.wl_display, version, server.renderer);
+	uint32_t compositor_version = 5;
+	wlr_compositor_create(server.wl_display, compositor_version, server.renderer);
 	// wlr_subcompositor_create(server.wl_display); // WLROOTS 16
 	wlr_data_device_manager_create(server.wl_display);
 
@@ -225,7 +225,8 @@ int main(int argc, char *argv[]) {
 
 	wl_list_init(&server.new_views);
 
-	server.layer_shell = wlr_layer_shell_v1_create(server.wl_display);
+	uint32_t layer_shell_v1_version = 4;
+	server.layer_shell = wlr_layer_shell_v1_create(server.wl_display, layer_shell_v1_version);
 	server.new_layer_surface.notify = server_new_layer_surface;
 	wl_signal_add(&server.layer_shell->events.new_surface, &server.new_layer_surface);
 
