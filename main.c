@@ -166,7 +166,8 @@ int main(int argc, char *argv[]) {
 	server.allocator = wlr_allocator_autocreate(server.backend, server.renderer);
 	wlr_renderer_init_wl_display(server.renderer, server.wl_display);
 
-	wlr_compositor_create(server.wl_display, server.renderer);
+	uint32_t version = 5;
+	wlr_compositor_create(server.wl_display, version, server.renderer);
 	// wlr_subcompositor_create(server.wl_display); // WLROOTS 16
 	wlr_data_device_manager_create(server.wl_display);
 
