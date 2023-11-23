@@ -32,7 +32,7 @@ wlroots_proj = subproject(
 if wlroots_proj.found()
 	wlroots = wlroots_proj.get_variable('wlroots')
 else
-	wlroots = dependency('wlroots', version: '>=0.15.0')
+	wlroots = dependency('wlroots', version: '>=0.17.0')
 endif
 
 cairo = dependency('cairo')
