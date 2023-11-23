@@ -16,7 +16,7 @@ emulator).
 To build and install wio:
 
 ```sh
-meson build
+meson setup build
 ninja -C build install
 ```
 
