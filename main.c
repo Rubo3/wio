@@ -162,6 +162,9 @@ int main(int argc, char *argv[]) {
 
 	server.wl_display = wl_display_create();
 	server.backend = wlr_backend_autocreate(server.wl_display, &server.session);
+	if (!server.backend) {
+		return 1;
+	}
 	server.renderer = wlr_renderer_autocreate(server.backend);
 	server.allocator = wlr_allocator_autocreate(server.backend, server.renderer);
 	wlr_renderer_init_wl_display(server.renderer, server.wl_display);
