@@ -142,10 +142,8 @@ static int portion(int x, int lo, int width) {
 }
 
 static int which_corner(struct wlr_box *box, int x, int y) {
-	int i, j;
-
-	i = portion(x, box->x, box->width);
-	j = portion(y, box->y, box->height);
+	int i = portion(x, box->x, box->width);
+	int j = portion(y, box->y, box->height);
 	return 3*j+i;
 }
 
