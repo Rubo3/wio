@@ -23,7 +23,7 @@ To build and install wio:
 
 ```sh
 meson setup build
-ninja -C build install
+meson compile -C build
 ```
 
 ## Basic principles
