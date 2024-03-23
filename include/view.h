@@ -6,18 +6,6 @@
 #define MINWIDTH 100
 #define MINHEIGHT 100
 
-struct wio_server;
-
-struct wio_view {
-	int x, y;
-    int area;
-	struct wlr_xdg_surface *xdg_surface;
-	struct wio_server *server;
-	struct wl_list link;
-	struct wl_listener map;
-	struct wl_listener destroy;
-};
-
 enum wio_view_area {
 	VIEW_AREA_BORDER_TOP_LEFT = 0,
 	VIEW_AREA_BORDER_TOP,
@@ -28,6 +16,18 @@ enum wio_view_area {
 	VIEW_AREA_BORDER_BOTTOM_LEFT,
 	VIEW_AREA_BORDER_BOTTOM,
     VIEW_AREA_BORDER_BOTTOM_RIGHT,
+};
+
+struct wio_server;
+
+struct wio_view {
+	int x, y;
+    enum wio_view_area area;
+	struct wlr_xdg_surface *xdg_surface;
+	struct wio_server *server;
+	struct wl_list link;
+	struct wl_listener map;
+	struct wl_listener destroy;
 };
 
 void server_new_xdg_surface(struct wl_listener *listener, void *data);

@@ -224,6 +224,8 @@ struct wlr_box wio_which_box(struct wio_server *server) {
 		y1 = server->interactive.sy;
 		less_swap1(x2, x1);
 		break;
+	case VIEW_AREA_SURFACE:
+		assert(0); // unreachable
 	case VIEW_AREA_BORDER_RIGHT:
 		x1 = server->interactive.sx;
 		x2 = server->cursor->x;
