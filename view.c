@@ -190,7 +190,10 @@ void wio_view_move(struct wio_view *view, int x, int y) {
 
 struct wlr_box wio_which_box(struct wio_server *server) {
 	struct wlr_box box;
-    int x1, x2, y1, y2;
+    int x1 = 0;
+	int x2 = 0;
+	int y1 = 0;
+	int y2 = 0;
 
 	if (server->interactive.view == NULL) {
 		goto End;
