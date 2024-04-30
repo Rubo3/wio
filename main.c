@@ -21,7 +21,7 @@
 #include <wlr/types/wlr_primary_selection_v1.h>
 #include <wlr/types/wlr_screencopy_v1.h>
 #include <wlr/types/wlr_seat.h>
-// #include <wlr/types/wlr_subcompositor.h> WLROOTS 16 (https://gitlab.com/Rubo/wio/-/blob/master/main.c#L166)
+#include <wlr/types/wlr_subcompositor.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/types/wlr_xdg_output_v1.h>
@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
 
 	uint32_t compositor_version = 5;
 	wlr_compositor_create(server.wl_display, compositor_version, server.renderer);
-	// wlr_subcompositor_create(server.wl_display); // WLROOTS 16
+	wlr_subcompositor_create(server.wl_display);
 	wlr_data_device_manager_create(server.wl_display);
 
 	wlr_export_dmabuf_manager_v1_create(server.wl_display);
