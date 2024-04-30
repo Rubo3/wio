@@ -235,7 +235,6 @@ int main(int argc, char *argv[]) {
 
 	server.menu.x = server.menu.y = -1;
 	gen_menu_textures(&server);
-	server.input_state = INPUT_STATE_NONE;
 
 	const char *socket = wl_display_add_socket_auto(server.wl_display);
 	if (!socket) {
