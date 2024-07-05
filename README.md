@@ -3,7 +3,7 @@ _Note_: this repository contains the wio
 the [patches](https://lists.sr.ht/~sircmpwn/wio/patches) which were not
 mainlined, and some changes to make it compile and build against the latest
 version of [wlroots](https://gitlab.freedesktop.org/wlroots/wlroots)
-(currently: 0.17.3).
+(currently: 0.17.4).
 
 It is available on the Arch User Repository as
 [`wio-wl`](https://aur.archlinux.org/packages/wio-wl).
