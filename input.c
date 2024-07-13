@@ -464,9 +464,13 @@ void
 server_cursor_axis(struct wl_listener *listener, void *data) {
 	struct wio_server *server = wl_container_of(listener, server, cursor_axis);
 	struct wlr_pointer_axis_event *event = data;
-	wlr_seat_pointer_notify_axis(server->seat, event->time_msec,
-							     event->orientation, event->delta,
-								 event->delta_discrete, event->source);
+	wlr_seat_pointer_notify_axis(server->seat,
+								 event->time_msec,
+							     event->orientation,
+								 event->delta,
+								 event->delta_discrete,
+								 event->source,
+								 WL_POINTER_AXIS_RELATIVE_DIRECTION_IDENTICAL);
 }
 
 void
