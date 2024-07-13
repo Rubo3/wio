@@ -424,5 +424,5 @@ void server_new_output(struct wl_listener *listener, void *data) {
 	}
 
 	wlr_output_commit(wlr_output);
-	wlr_output_create_global(wlr_output);
+	wlr_output_create_global(wlr_output, server->wl_display);
 }
