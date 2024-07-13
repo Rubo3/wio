@@ -327,7 +327,7 @@ handle_button_internal(struct wio_server *server, struct wlr_pointer_button_even
 	struct wio_view *view;
 	switch (server->input_state) {
 	case INPUT_STATE_NONE:
-		if (event->state == WLR_BUTTON_PRESSED) {
+		if (event->state == WL_POINTER_BUTTON_STATE_PRESSED) {
 			// TODO: Open over the last-used menu item
 			server->input_state = INPUT_STATE_MENU;
 			server->menu.x = server->cursor->x;
@@ -339,13 +339,13 @@ handle_button_internal(struct wio_server *server, struct wlr_pointer_button_even
 			menu_handle_button(server, event);
 			break;
 		}
-		if (event->state == WLR_BUTTON_PRESSED) {
+		if (event->state == WL_POINTER_BUTTON_STATE_PRESSED) {
 			server->input_state = INPUT_STATE_NONE;
 			server->menu.x = server->menu.y = -1;
 		}
 		break;
 	case INPUT_STATE_NEW_START:
-		if (event->state != WLR_BUTTON_PRESSED) {
+		if (event->state != WL_POINTER_BUTTON_STATE_PRESSED) {
 			break;
 		}
 		server->interactive.sx = server->cursor->x;
@@ -357,7 +357,7 @@ handle_button_internal(struct wio_server *server, struct wlr_pointer_button_even
 		view_end_interactive(server);
 		break;
 	case INPUT_STATE_RESIZE_SELECT:
-		if (event->state != WLR_BUTTON_PRESSED) {
+		if (event->state != WL_POINTER_BUTTON_STATE_PRESSED) {
 			break;
 		}
 		view = wio_view_at(server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
@@ -368,7 +368,7 @@ handle_button_internal(struct wio_server *server, struct wlr_pointer_button_even
 		}
 		break;
 	case INPUT_STATE_RESIZE_START:
-		if (event->state != WLR_BUTTON_PRESSED) {
+		if (event->state != WL_POINTER_BUTTON_STATE_PRESSED) {
 			break;
 		}
 		server->interactive.sx = server->cursor->x;
@@ -393,7 +393,7 @@ handle_button_internal(struct wio_server *server, struct wlr_pointer_button_even
 		view_end_interactive(server);
 		break;
 	case INPUT_STATE_MOVE_SELECT:
-		if (event->state != WLR_BUTTON_PRESSED) {
+		if (event->state != WL_POINTER_BUTTON_STATE_PRESSED) {
 			break;
 		}
 		view = wio_view_at(server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
@@ -410,7 +410,7 @@ handle_button_internal(struct wio_server *server, struct wlr_pointer_button_even
 		view_end_interactive(server);
 		break;
 	case INPUT_STATE_DELETE_SELECT:
-		if (event->state != WLR_BUTTON_PRESSED) {
+		if (event->state != WL_POINTER_BUTTON_STATE_PRESSED) {
 			break;
 		}
 		view = wio_view_at(server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
@@ -436,7 +436,7 @@ server_cursor_button(struct wl_listener *listener, void *data) {
 		view = wio_view_at(server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
 	}
     if (!view) {
-        if (event->state == WLR_BUTTON_PRESSED && event->button != BTN_RIGHT) {
+        if (event->state == WL_POINTER_BUTTON_STATE_PRESSED && event->button != BTN_RIGHT) {
 			view_end_interactive(server);
 			return;
 		}
