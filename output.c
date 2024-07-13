@@ -9,6 +9,7 @@
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/util/box.h>
+#include <wlr/util/transform.h>
 
 #include "colors.h"
 #include "layers.h"
