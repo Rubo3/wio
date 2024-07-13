@@ -187,7 +187,7 @@ int main(int argc, char *argv[]) {
 	server.new_output.notify = server_new_output;
 	wl_signal_add(&server.backend->events.new_output, &server.new_output);
 
-	server.output_layout = wlr_output_layout_create();
+	server.output_layout = wlr_output_layout_create(server.wl_display);
 	wlr_xdg_output_manager_v1_create(server.wl_display, server.output_layout);
 
 	server.cursor = wlr_cursor_create();
