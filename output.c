@@ -232,13 +232,6 @@ static void render_view_border(struct wlr_renderer *renderer,
 	wlr_render_rect(renderer, &borders, color, wlr_output->transform_matrix);
 }
 
-struct render_data_layer {
-	struct wlr_output *output;
-	struct wlr_renderer *renderer;
-	struct wio_view *view;
-	struct timespec *when;
-};
-
 static void render_layer_surface(struct wlr_surface *surface,
 								 int sx, int sy, void *data) {
 	struct wio_layer_surface *layer_surface = data;
