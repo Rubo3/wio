@@ -43,6 +43,7 @@ struct wio_server {
 	struct wlr_cursor *cursor;
 	struct wlr_output_layout *output_layout;
 	struct wlr_renderer *renderer;
+	struct wlr_render_pass *render_pass;
 	struct wlr_seat *seat;
 	struct wlr_xcursor_manager *cursor_mgr;
 	struct wlr_xdg_shell *xdg_shell;
@@ -89,6 +90,7 @@ struct wio_output {
 
 	struct wio_server *server;
 	struct wlr_output *wlr_output;
+	struct wlr_output_state *wlr_output_state;
 	struct wl_list layers[4];
 
 	struct wl_listener frame;

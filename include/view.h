@@ -23,7 +23,7 @@ struct wio_server;
 struct wio_view {
 	int x, y;
     enum wio_view_area area;
-	struct wlr_xdg_surface *xdg_surface;
+	struct wlr_xdg_toplevel *xdg_toplevel;
 	struct wio_server *server;
 	struct wl_list link;
 	struct wl_listener map;
