@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <wayland-server.h>
 #include <wlr/types/wlr_xdg_shell.h>
+#include <wlr/types/wlr_xdg_decoration_v1.h>
 #include <wlr/util/box.h>
 
 #include "xdg-shell-protocol.h"
@@ -12,10 +13,10 @@
 #define less_swap1(A, B) { if (A < B) { int C = A; A = B; B = C + window_border * 2; } }
 #define less_swap2(A, B) { if (A < B) { int C = A; A = B - window_border * 2; B = C; } }
 
-static void xdg_surface_map(struct wl_listener *listener, void *data) {
+static void xdg_toplevel_map(struct wl_listener *listener, void *data) {
 	struct wio_view *view = wl_container_of(listener, view, map);
 	struct wio_server *server = view->server;
-	wio_view_focus(view, view->xdg_surface->surface);
+	wio_view_focus(view, view->xdg_toplevel->base->surface);
 
 	struct wlr_output *output = wlr_output_layout_output_at(
 			server->output_layout, server->cursor->x, server->cursor->y);
@@ -23,7 +24,7 @@ static void xdg_surface_map(struct wl_listener *listener, void *data) {
 			server->output_layout, output);
 	if (view->x == -1 || view->y == -1) {
 		struct wlr_surface_state *current =
-			&view->xdg_surface->surface->current;
+			&view->xdg_toplevel->base->surface->current;
 		int owidth, oheight;
 		wlr_output_effective_resolution(output, &owidth, &oheight);
 		wio_view_move(view,
@@ -35,54 +36,81 @@ static void xdg_surface_map(struct wl_listener *listener, void *data) {
 	}
 }
 
-static void xdg_surface_destroy(struct wl_listener *listener, void *data) {
-	struct wio_view *view = wl_container_of(listener, view, destroy);
-	wl_list_remove(&view->link);
-	free(view);
-}
-
-void server_new_xdg_surface(struct wl_listener *listener, void *data) {
-	struct wio_server *server = wl_container_of(
-			listener, server, new_xdg_surface);
-	struct wlr_xdg_surface *xdg_surface = data;
-	if (xdg_surface->role != WLR_XDG_SURFACE_ROLE_TOPLEVEL) {
+static void xdg_toplevel_commit(struct wl_listener *listener, void *data) {
+	struct wio_view *view = wl_container_of(listener, view, commit);
+	if (!view->xdg_toplevel->base->initial_commit) {
 		return;
 	}
-
-	struct wio_view *view = calloc(1, sizeof(struct wio_view));
-	view->server = server;
-	view->xdg_surface = xdg_surface;
-	view->x = view->y = -1;
-
-	view->destroy.notify = xdg_surface_destroy;
-	wl_signal_add(&xdg_surface->events.destroy, &view->destroy);
-	view->map.notify = xdg_surface_map;
-	wl_signal_add(&xdg_surface->surface->events.map, &view->map);
-
-	wlr_xdg_toplevel_set_tiled(view->xdg_surface->toplevel,
-		WLR_EDGE_LEFT | WLR_EDGE_RIGHT | WLR_EDGE_TOP | WLR_EDGE_BOTTOM);
-
+	wlr_xdg_toplevel_set_tiled(view->xdg_toplevel,
+						       WLR_EDGE_LEFT | WLR_EDGE_RIGHT | WLR_EDGE_TOP | WLR_EDGE_BOTTOM);
 	pid_t pid;
 	uid_t uid;
 	gid_t gid;
-	struct wl_client *client = wl_resource_get_client(xdg_surface->resource);
+	struct wl_client *client = wl_resource_get_client(view->xdg_toplevel->resource);
 	wl_client_get_credentials(client, &pid, &uid, &gid);
 	struct wio_new_view *new_view;
-	wl_list_for_each(new_view, &server->new_views, link) {
+	wl_list_for_each(new_view, &view->server->new_views, link) {
 		if (new_view->pid != pid) {
 			continue;
 		}
 		view->x = new_view->box.x;
 		view->y = new_view->box.y;
-		wlr_xdg_toplevel_set_size(xdg_surface->toplevel,
-				                  new_view->box.width,
-								  new_view->box.height);
+		wlr_xdg_toplevel_set_size(view->xdg_toplevel, new_view->box.width, new_view->box.height);
 		wl_list_remove(&new_view->link);
 		free(new_view);
 		break;
 	}
+	wl_list_insert(&view->server->views, &view->link);
+}
 
-	wl_list_insert(&server->views, &view->link);
+static void xdg_toplevel_destroy(struct wl_listener *listener, void *data) {
+	struct wio_view *view = wl_container_of(listener, view, destroy);
+	wl_list_remove(&view->link);
+	free(view);
+}
+
+void server_xdg_shell_new_toplevel(struct wl_listener *listener, void *data) {
+	struct wio_server *server = wl_container_of(listener, server, xdg_shell_new_toplevel);
+	struct wlr_xdg_toplevel *xdg_toplevel = data;
+
+	struct wio_view *view = calloc(1, sizeof(struct wio_view));
+	view->server = server;
+	view->xdg_toplevel = xdg_toplevel;
+	view->x = view->y = -1;
+
+	view->map.notify = xdg_toplevel_map;
+	wl_signal_add(&xdg_toplevel->base->surface->events.map, &view->map);
+	view->commit.notify = xdg_toplevel_commit;
+	wl_signal_add(&xdg_toplevel->base->surface->events.commit, &view->commit);
+	view->destroy.notify = xdg_toplevel_destroy;
+	wl_signal_add(&xdg_toplevel->base->surface->events.destroy, &view->destroy);
+}
+
+static void xdg_toplevel_decoration_request_mode(struct wl_listener *listener, void *data) {
+	struct wlr_xdg_toplevel_decoration_v1 *decoration = data;
+    wlr_xdg_toplevel_decoration_v1_set_mode(decoration, WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+}
+
+static void xdg_toplevel_decoration_destroy(struct wl_listener *listener, void *data) {
+	struct wlr_xdg_toplevel_decoration_v1 *decoration = data;
+    struct wio_decoration *d = decoration->data;
+    wl_list_remove(&d->destroy.link);
+    wl_list_remove(&d->request_mode.link);
+    free(d);
+}
+
+void server_new_toplevel_decoration(struct wl_listener *listener, void *data) {
+	struct wlr_xdg_toplevel_decoration_v1 *wlr_xdg_toplevel_decoration = data;
+    struct wio_decoration *d = calloc(1, sizeof(*d));
+	wlr_xdg_toplevel_decoration->data = d;
+
+    d->request_mode.notify = xdg_toplevel_decoration_request_mode;
+    wl_signal_add(&wlr_xdg_toplevel_decoration->events.request_mode, &d->request_mode);
+    d->destroy.notify = xdg_toplevel_decoration_destroy;
+    wl_signal_add(&wlr_xdg_toplevel_decoration->events.destroy, &d->destroy);
+
+	// force server-side decorations without waiting for the client to request the decoration mode
+    xdg_toplevel_decoration_request_mode(&d->request_mode, wlr_xdg_toplevel_decoration);
 }
 
 void wio_view_focus(struct wio_view *view, struct wlr_surface *surface) {
@@ -96,13 +124,13 @@ void wio_view_focus(struct wio_view *view, struct wlr_surface *surface) {
 		return;
 	}
 	if (prev_surface) {
-		struct wlr_xdg_surface *previous = wlr_xdg_surface_try_from_wlr_surface(prev_surface);
+		struct wlr_xdg_toplevel *previous = wlr_xdg_toplevel_try_from_wlr_surface(prev_surface);
 		assert(previous);
-		wlr_xdg_toplevel_set_activated(previous->toplevel, false);
+		wlr_xdg_toplevel_set_activated(previous, false);
 	}
 	struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(seat);
-	wlr_xdg_toplevel_set_activated(view->xdg_surface->toplevel, true);
-	wlr_seat_keyboard_notify_enter(seat, view->xdg_surface->surface,
+	wlr_xdg_toplevel_set_activated(view->xdg_toplevel, true);
+	wlr_seat_keyboard_notify_enter(seat, view->xdg_toplevel->base->surface,
 			keyboard->keycodes, keyboard->num_keycodes, &keyboard->modifiers);
 	/* bring to front */
 	wl_list_remove(&view->link);
@@ -118,7 +146,7 @@ static bool view_at(struct wio_view *view,
 	double _sx, _sy;
 	struct wlr_surface *_surface = NULL;
 	_surface = wlr_xdg_surface_surface_at(
-			view->xdg_surface, view_sx, view_sy, &_sx, &_sy);
+			view->xdg_toplevel->base, view_sx, view_sy, &_sx, &_sy);
 
 	if (_surface != NULL) {
 		*sx = _sx;
@@ -163,8 +191,8 @@ struct wio_view *wio_view_at(struct wio_server *server, double lx, double ly,
 		// Border
 		border_box.x = view->x - window_border;
 		border_box.y = view->y - window_border;
-		border_box.width = view->xdg_surface->surface->current.width + window_border * 2;
-		border_box.height = view->xdg_surface->surface->current.height + window_border * 2;
+		border_box.width = view->xdg_toplevel->base->surface->current.width + window_border * 2;
+		border_box.height = view->xdg_toplevel->base->surface->current.height + window_border * 2;
 		if (wlr_box_contains_point(&border_box, lx, ly)) {
 			view->area = which_corner(&border_box, lx, ly);
 			*sx = lx - view->x;
@@ -182,7 +210,7 @@ void wio_view_move(struct wio_view *view, int x, int y) {
 	// Cheating as FUCK because I'm lazy
 	struct wio_output *output;
 	wl_list_for_each(output, &view->server->outputs, link) {
-		wlr_surface_send_enter(view->xdg_surface->surface, output->wlr_output);
+		wlr_surface_send_enter(view->xdg_toplevel->base->surface, output->wlr_output);
 	}
 }
 
@@ -196,8 +224,8 @@ struct wlr_box wio_which_box(struct wio_server *server) {
 	if (server->interactive.view == NULL) {
 		goto End;
 	}
-	x2 = server->interactive.sx + server->interactive.view->xdg_surface->surface->current.width;
-	y2 = server->interactive.sy + server->interactive.view->xdg_surface->surface->current.height;
+	x2 = server->interactive.sx + server->interactive.view->xdg_toplevel->base->surface->current.width;
+	y2 = server->interactive.sy + server->interactive.view->xdg_toplevel->base->surface->current.height;
 	switch (server->interactive.view->area) {
 	case VIEW_AREA_BORDER_TOP_LEFT:
 		y1 = server->cursor->y;
