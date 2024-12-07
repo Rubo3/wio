@@ -21,6 +21,7 @@
 #include "server.h"
 #include "view.h"
 
+// TODO(rubo): should these be replaced with the usual icons used for resizing?
 static char *corners[9] = {
 	"top_left_corner", "top_side", "top_right_corner",
 	"left_side", NULL, "right_side",
