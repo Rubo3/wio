@@ -31,6 +31,9 @@
 #include "server.h"
 #include "view.h"
 
+#define XDG_SHELL_VERSION 2
+#define LAYER_SHELL_V1_VERSION 4
+
 static void gen_menu_textures(struct wio_server *server) {
 	struct wlr_renderer *renderer = server->renderer;
 	// numbers pulled from ass
@@ -223,14 +226,16 @@ int main(int argc, char *argv[]) {
 	wl_list_init(&server.pointers);
 
 	wl_list_init(&server.views);
-	server.xdg_shell = wlr_xdg_shell_create(server.wl_display, 2);
-	server.new_xdg_surface.notify = server_new_xdg_surface;
-	wl_signal_add(&server.xdg_shell->events.new_surface, &server.new_xdg_surface);
-
 	wl_list_init(&server.new_views);
+	server.xdg_shell = wlr_xdg_shell_create(server.wl_display, XDG_SHELL_VERSION);
+	server.xdg_shell_new_toplevel.notify = server_xdg_shell_new_toplevel;
+	wl_signal_add(&server.xdg_shell->events.new_toplevel, &server.xdg_shell_new_toplevel);
 
-	uint32_t layer_shell_v1_version = 4;
-	server.layer_shell = wlr_layer_shell_v1_create(server.wl_display, layer_shell_v1_version);
+	server.xdg_decoration_manager = wlr_xdg_decoration_manager_v1_create(server.wl_display);
+	server.new_toplevel_decoration.notify = server_new_toplevel_decoration;
+	wl_signal_add(&server.xdg_decoration_manager->events.new_toplevel_decoration, &server.new_toplevel_decoration);
+
+	server.layer_shell = wlr_layer_shell_v1_create(server.wl_display, LAYER_SHELL_V1_VERSION);
 	server.new_layer_surface.notify = server_new_layer_surface;
 	wl_signal_add(&server.layer_shell->events.new_surface, &server.new_layer_surface);
 
