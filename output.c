@@ -190,7 +190,7 @@ static void render_menu(struct wio_output *output) {
 
 static void render_view_border(struct wlr_render_pass *render_pass,
 							   struct wio_output *output, struct wio_view *view,
-							   int x, int y, int width, int height, int selection) {
+							   struct wlr_box box, int selection) {
 	struct wlr_render_color color;
 	if (selection)
 		color = selection_box;
@@ -207,9 +207,9 @@ static void render_view_border(struct wlr_render_pass *render_pass,
 	struct wlr_render_rect_options options = { 0 };
 
 	// Top
-	borders.x = ox + (x - window_border);
-	borders.y = oy + (y - window_border);
-	borders.width = (width + window_border * 2) ;
+	borders.x = ox + (box.x - window_border);
+	borders.y = oy + (box.y - window_border);
+	borders.width = (box.width + window_border * 2) ;
 	borders.height = window_border;
 	scale_box(&borders, scale);
 	options.box = borders;
@@ -217,19 +217,19 @@ static void render_view_border(struct wlr_render_pass *render_pass,
 	wlr_render_pass_add_rect(render_pass, &options);
 
 	// Right
-	borders.x = ox + (x + width);
-	borders.y = oy + (y - window_border);
+	borders.x = ox + (box.x + box.width);
+	borders.y = oy + (box.y - window_border);
 	borders.width = window_border;
-	borders.height = (height + window_border * 2);
+	borders.height = (box.height + window_border * 2);
 	scale_box(&borders, scale);
 	options.box = borders;
 	options.color = color;
 	wlr_render_pass_add_rect(render_pass, &options);
 
 	// Bottom
-	borders.x = ox + (x - window_border);
-	borders.y = oy + (y + height);
-	borders.width = (width + window_border * 2);
+	borders.x = ox + (box.x - window_border);
+	borders.y = oy + (box.y + box.height);
+	borders.width = (box.width + window_border * 2);
 	borders.height = window_border;
 	scale_box(&borders, scale);
 	options.box = borders;
@@ -237,10 +237,10 @@ static void render_view_border(struct wlr_render_pass *render_pass,
 	wlr_render_pass_add_rect(render_pass, &options);
 
 	// Left
-	borders.x = ox + (x - window_border);
-	borders.y = oy + (y - window_border);
+	borders.x = ox + (box.x - window_border);
+	borders.y = oy + (box.y - window_border);
 	borders.width = window_border;
-	borders.height = (height + window_border * 2);
+	borders.height = (box.height + window_border * 2);
 	scale_box(&borders, scale);
 	options.box = borders;
 	options.color = color;
@@ -318,17 +318,19 @@ static void output_frame(struct wl_listener *listener, void *data) {
 		||   view == server->interactive.view) {
 			continue;
 		}
+		struct wlr_box box = {
+			.x = view->x,
+			.y = view->y,
+			.width = view->xdg_toplevel->base->surface->current.width,
+			.height = view->xdg_toplevel->base->surface->current.height,
+		};
+		render_view_border(server->render_pass, output, view, box, 0);
 		struct render_data rdata = {
 			.output = wlr_output,
 			.view = view,
 			.render_pass = server->render_pass,
 			.when = &now,
 		};
-
-		render_view_border(server->render_pass, output, view, view->x, view->y,
-				view->xdg_toplevel->base->surface->current.width,
-				view->xdg_toplevel->base->surface->current.height,
-				0);
 		wlr_xdg_surface_for_each_surface(view->xdg_toplevel->base,
 				render_surface, &rdata);
 	}
@@ -337,18 +339,19 @@ static void output_frame(struct wl_listener *listener, void *data) {
     case INPUT_STATE_BORDER_DRAG:
 		box = wio_which_box(server);
 		box = wio_canon_box(server, box);
-		render_view_border(server->render_pass, output, NULL, box.x, box.y, box.width, box.height, 1);
+		render_view_border(server->render_pass, output, NULL, box, 1);
 		break;
 	case INPUT_STATE_MOVE:
-		int new_x = server->cursor->x - server->interactive.sx;
-		int new_y = server->cursor->y - server->interactive.sy;
-		render_view_border(server->render_pass, output, view, new_x, new_y,
-			view->xdg_toplevel->base->surface->current.width,
-			view->xdg_toplevel->base->surface->current.height,
-			1);
+		struct wlr_box box = {
+			.x = server->cursor->x - server->interactive.sx,
+			.y = server->cursor->y - server->interactive.sy,
+			.width = view->xdg_toplevel->base->surface->current.width,
+			.height = view->xdg_toplevel->base->surface->current.height,
+		};
+		render_view_border(server->render_pass, output, view, box, 1);
 		// NOTE(rubo): this does not happen in Plan 9's rio
-		view->x = new_x;
-		view->y = new_y;
+		view->x = box.x;
+		view->y = box.y;
 		struct render_data rdata = {
 			.output = wlr_output,
 			.view = view,
@@ -368,7 +371,7 @@ static void output_frame(struct wl_listener *listener, void *data) {
 			};
 			wlr_render_pass_add_rect(server->render_pass, &options);
 		}
-		render_view_border(server->render_pass, output, NULL, box.x, box.y, box.width, box.height, 1);
+		render_view_border(server->render_pass, output, NULL, box, 1);
 		break;
 	default:
 		break;
