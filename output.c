@@ -67,9 +67,7 @@ static void render_menu(struct wio_output *output) {
 	struct wio_server *server = output->server;
 	struct wlr_render_pass *render_pass = server->render_pass;
 
-	size_t ntextures =
-		sizeof(server->menu.inactive_textures) /
-		sizeof(server->menu.inactive_textures[0]);
+	size_t ntextures = countof(server->menu.inactive_textures);
 	int scale = output->wlr_output->scale;
 	int border = 3 * scale, margin = 4 * scale;
 	int text_height = 0, text_width = 0;

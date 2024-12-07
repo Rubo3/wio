@@ -45,7 +45,7 @@ static void gen_menu_textures(struct wio_server *server) {
 	cairo_set_source_rgb(cairo, 0, 0, 0);
 
 	char *text[] = {"New", "Resize", "Move", "Delete", "Hide"};
-	for (size_t i = 0; i < sizeof(text) / sizeof(text[0]); ++i) {
+	for (size_t i = 0; i < countof(text); ++i) {
 		cairo_set_operator(cairo, CAIRO_OPERATOR_CLEAR);
 		cairo_paint(cairo);
 		cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
@@ -62,7 +62,7 @@ static void gen_menu_textures(struct wio_server *server) {
 	}
 
 	cairo_set_source_rgb(cairo, 1, 1, 1);
-	for (size_t i = 0; i < sizeof(text) / sizeof(text[0]); ++i) {
+	for (size_t i = 0; i < countof(text); ++i) {
 		cairo_set_operator(cairo, CAIRO_OPERATOR_CLEAR);
 		cairo_paint(cairo);
 		cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);

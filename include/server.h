@@ -15,6 +15,8 @@
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/util/box.h>
 
+#define countof(array) (sizeof((array)) / sizeof((array)[0]))
+
 static const int window_border = 5;
 
 enum wio_input_state {
