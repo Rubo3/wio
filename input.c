@@ -388,7 +388,7 @@ handle_button_internal(struct wio_server *server, struct wlr_pointer_button_even
 		}
 	Done:
 		wio_view_move(server->interactive.view, box.x, box.y);
-		wlr_xdg_toplevel_set_size(server->interactive.view->xdg_surface->toplevel, box.width, box.height);
+		wlr_xdg_toplevel_set_size(server->interactive.view->xdg_toplevel, box.width, box.height);
 
 		view_end_interactive(server);
 		break;
@@ -415,7 +415,7 @@ handle_button_internal(struct wio_server *server, struct wlr_pointer_button_even
 		}
 		view = wio_view_at(server, server->cursor->x, server->cursor->y, &surface, &sx, &sy);
 		if (view) {
-			wlr_xdg_toplevel_send_close(view->xdg_surface->toplevel);
+			wlr_xdg_toplevel_send_close(view->xdg_toplevel);
 		}
 		view_end_interactive(server);
 		break;
