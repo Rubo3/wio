@@ -27,6 +27,7 @@ struct wio_view {
 	struct wio_server *server;
 	struct wl_list link;
 	struct wl_listener map;
+	struct wl_listener commit;
 	struct wl_listener destroy;
 };
 
