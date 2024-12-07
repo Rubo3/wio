@@ -24,6 +24,17 @@ struct render_data {
 	struct timespec *when;
 };
 
+static int scale_length(int length, int offset, float scale) {
+	return round((offset + length) * scale) - round(offset * scale);
+}
+
+void scale_box(struct wlr_box *box, float scale) {
+	box->width = scale_length(box->width, box->x, scale);
+	box->height = scale_length(box->height, box->y, scale);
+	box->x = round(box->x * scale);
+	box->y = round(box->y * scale);
+}
+
 static void render_surface(struct wlr_surface *surface,
 		int sx, int sy, void *data) {
 	struct render_data *rdata = data;
@@ -38,11 +49,12 @@ static void render_surface(struct wlr_surface *surface,
 			view->server->output_layout, output, &ox, &oy);
 	ox += view->x + sx, oy += view->y + sy;
 	struct wlr_box box = {
-		.x = ox * output->scale,
-		.y = oy * output->scale,
-		.width = surface->current.width * output->scale,
-		.height = surface->current.height * output->scale,
+		.x = ox,
+		.y = oy,
+		.width = surface->current.width,
+		.height = surface->current.height,
 	};
+	scale_box(&box, output->scale);
 	struct wlr_render_texture_options options = {
 		.texture = texture,
 		.dst_box = box,
@@ -50,17 +62,6 @@ static void render_surface(struct wlr_surface *surface,
 	};
 	wlr_render_pass_add_texture(rdata->render_pass, &options);
 	wlr_surface_send_frame_done(surface, rdata->when);
-}
-
-static int scale_length(int length, int offset, float scale) {
-	return round((offset + length) * scale) - round(offset * scale);
-}
-
-void scale_box(struct wlr_box *box, float scale) {
-	box->width = scale_length(box->width, box->x, scale);
-	box->height = scale_length(box->height, box->y, scale);
-	box->x = round(box->x * scale);
-	box->y = round(box->y * scale);
 }
 
 static void render_menu(struct wio_output *output) {
@@ -169,10 +170,11 @@ static void render_menu(struct wio_output *output) {
             height = texture->height;
 			width /= scale, height /= scale;
 		}
-		box.x = (ox + (text_width / 2 - width / 2)) * scale;
-		box.y = oy * scale;
-		box.width = width * scale;
-		box.height = height * scale;
+		box.x = (ox + (text_width / 2 - width / 2));
+		box.y = oy;
+		box.width = width;
+		box.height = height;
+		scale_box(&box, scale);
 		struct wlr_render_texture_options options = {
 			.texture = texture,
 			.dst_box = box,
@@ -201,50 +203,45 @@ static void render_view_border(struct wlr_render_pass *render_pass,
 	int scale = wlr_output->scale;
 	double ox = 0, oy = 0;
 	wlr_output_layout_output_coords(output->server->output_layout, wlr_output, &ox, &oy);
-	ox *= scale, oy *= scale;
 	struct wlr_box borders = { 0 };
 	struct wlr_render_rect_options options = { 0 };
 
 	// Top
-	borders.x = (x - window_border) * scale;
-	borders.x += ox;
-	borders.y = (y - window_border) * scale;
-	borders.y += oy;
-	borders.width = (width + window_border * 2) * scale;
-	borders.height = window_border * scale;
+	borders.x = ox + (x - window_border);
+	borders.y = oy + (y - window_border);
+	borders.width = (width + window_border * 2) ;
+	borders.height = window_border;
+	scale_box(&borders, scale);
 	options.box = borders;
 	options.color = color;
 	wlr_render_pass_add_rect(render_pass, &options);
 
 	// Right
-	borders.x = (x + width) * scale;
-	borders.x += ox;
-	borders.y = (y - window_border) * scale;
-	borders.y += oy;
-	borders.width = window_border * scale;
-	borders.height = (height + window_border * 2) * scale;
+	borders.x = ox + (x + width);
+	borders.y = oy + (y - window_border);
+	borders.width = window_border;
+	borders.height = (height + window_border * 2);
+	scale_box(&borders, scale);
 	options.box = borders;
 	options.color = color;
 	wlr_render_pass_add_rect(render_pass, &options);
 
 	// Bottom
-	borders.x = (x - window_border) * scale;
-	borders.x += ox;
-	borders.y = (y + height) * scale;
-	borders.y += oy;
-	borders.width = (width + window_border * 2) * scale;
-	borders.height = window_border * scale;
+	borders.x = ox + (x - window_border);
+	borders.y = oy + (y + height);
+	borders.width = (width + window_border * 2);
+	borders.height = window_border;
+	scale_box(&borders, scale);
 	options.box = borders;
 	options.color = color;
 	wlr_render_pass_add_rect(render_pass, &options);
 
 	// Left
-	borders.x = (x - window_border) * scale;
-	borders.x += ox;
-	borders.y = (y - window_border) * scale;
-	borders.y += oy;
-	borders.width = window_border * scale;
-	borders.height = (height + window_border * 2) * scale;
+	borders.x = ox + (x - window_border);
+	borders.y = oy + (y - window_border);
+	borders.width = window_border;
+	borders.height = (height + window_border * 2);
+	scale_box(&borders, scale);
 	options.box = borders;
 	options.color = color;
 	wlr_render_pass_add_rect(render_pass, &options);
