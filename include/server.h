@@ -48,6 +48,7 @@ struct wio_server {
 	struct wlr_xcursor_manager *cursor_mgr;
 	struct wlr_xdg_shell *xdg_shell;
 	struct wlr_layer_shell_v1 *layer_shell;
+	struct wlr_xdg_decoration_manager_v1 *xdg_decoration_manager;
 
 	struct wl_list outputs;
 	struct wl_list output_configs;
@@ -65,9 +66,9 @@ struct wio_server {
 	struct wl_listener cursor_axis;
 	struct wl_listener cursor_frame;
 	struct wl_listener request_cursor;
-
-	struct wl_listener new_xdg_surface;
+	struct wl_listener xdg_shell_new_toplevel;
 	struct wl_listener new_layer_surface;
+	struct wl_listener new_toplevel_decoration;
 
 	struct {
 		int x, y;
