@@ -65,6 +65,8 @@ static void xdg_toplevel_commit(struct wl_listener *listener, void *data) {
 
 static void xdg_toplevel_destroy(struct wl_listener *listener, void *data) {
 	struct wio_view *view = wl_container_of(listener, view, destroy);
+	wl_list_remove(&view->commit.link);
+	wl_list_remove(&view->destroy.link);
 	wl_list_remove(&view->link);
 	free(view);
 }
