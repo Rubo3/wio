@@ -317,7 +317,8 @@ static void output_frame(struct wl_listener *listener, void *data) {
 
 	struct wio_view *view;
 	wl_list_for_each_reverse(view, &server->views, link) {
-		if (!view->xdg_toplevel->base->surface->mapped) {
+		if (!view->xdg_toplevel->base->surface->mapped
+		||   view == server->interactive.view) {
 			continue;
 		}
 		struct render_data rdata = {
@@ -342,12 +343,23 @@ static void output_frame(struct wl_listener *listener, void *data) {
 		render_view_border(server->render_pass, output, NULL, box.x, box.y, box.width, box.height, 1);
 		break;
 	case INPUT_STATE_MOVE:
-		render_view_border(server->render_pass, output, view,
-			server->cursor->x - server->interactive.sx,
-			server->cursor->y - server->interactive.sy,
+		int new_x = server->cursor->x - server->interactive.sx;
+		int new_y = server->cursor->y - server->interactive.sy;
+		render_view_border(server->render_pass, output, view, new_x, new_y,
 			view->xdg_toplevel->base->surface->current.width,
 			view->xdg_toplevel->base->surface->current.height,
 			1);
+		// NOTE(rubo): this does not happen in Plan 9's rio
+		view->x = new_x;
+		view->y = new_y;
+		struct render_data rdata = {
+			.output = wlr_output,
+			.view = view,
+			.render_pass = server->render_pass,
+			.when = &now,
+		};
+		wlr_xdg_surface_for_each_surface(view->xdg_toplevel->base,
+				render_surface, &rdata);
 		break;
 	case INPUT_STATE_NEW_END:
 	case INPUT_STATE_RESIZE_END:
