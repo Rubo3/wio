@@ -101,6 +101,18 @@ static void xdg_toplevel_decoration_destroy(struct wl_listener *listener, void *
 
 void server_new_toplevel_decoration(struct wl_listener *listener, void *data) {
 	struct wlr_xdg_toplevel_decoration_v1 *wlr_xdg_toplevel_decoration = data;
+	/*
+	 * TODO(rubo): this bug is nasty: since wlroots 0.18.0 I started getting the error
+	 * "A configure is scheduled for an uninitialized xdg_surface" where the surface mentioned is
+	 * this new decoration's surface. Adding this check made the error go away, because setting
+	 * the decoration schedules a configure event, but then I started getting a new wlroots error,
+	 * "Basic output test failed", right after the "new xdg_toplevel_decoration" info.
+	 * Remember a surface gets initialised by wlroots after the first commit.
+     */
+	if (!wlr_xdg_toplevel_decoration->toplevel->base->initialized) {
+		return;
+	}
+
     struct wio_decoration *d = calloc(1, sizeof(*d));
 	wlr_xdg_toplevel_decoration->data = d;
 
