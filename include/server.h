@@ -97,6 +97,7 @@ struct wio_output {
 	struct wl_list layers[4];
 
 	struct wl_listener frame;
+	struct wl_listener destroy;
 };
 
 struct wio_output_config {

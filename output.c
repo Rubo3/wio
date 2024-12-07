@@ -390,6 +390,17 @@ static void output_frame(struct wl_listener *listener, void *data) {
 	wlr_output_commit_state(wlr_output, wlr_output_state);
 }
 
+static void output_destroy(struct wl_listener *listener, void *data) {
+	struct wlr_output *wlr_output = data;
+	struct wio_output *output = wlr_output->data;
+	struct wio_server *server = output->server;
+
+	wl_list_remove(&output->link);
+	if (wl_list_empty(&server->outputs)) {
+		wl_display_terminate(server->wl_display);
+	}
+}
+
 void server_new_output(struct wl_listener *listener, void *data) {
 	struct wio_server *server = wl_container_of(listener, server, new_output);
 	struct wlr_output *wlr_output = data;
@@ -406,6 +417,9 @@ void server_new_output(struct wl_listener *listener, void *data) {
 	wl_signal_add(&wlr_output->events.frame, &output->frame);
 	wl_list_insert(&server->outputs, &output->link);
 	wlr_output->data = output;
+
+	output->destroy.notify = output_destroy;
+	wl_signal_add(&wlr_output->events.destroy, &output->destroy);
 
 	wl_list_init(&output->layers[0]);
 	wl_list_init(&output->layers[1]);
