@@ -72,7 +72,7 @@ Wio supports multihead configurations and HiDPI displays. In order to take
 advantage of this, you must pass some output configurations on the command line.
 You can specify the following options, in this order:
 
-- Output name (`weston-info` can list output names & modes)
+- Output name (`wayland-info` can list output names & modes)
 - X & Y coordinates in the multihead layout
 - Width & height of the desired mode
 - Scale factor
