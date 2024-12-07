@@ -321,8 +321,8 @@ static void output_frame(struct wl_listener *listener, void *data) {
 		struct wlr_box box = {
 			.x = view->x,
 			.y = view->y,
-			.width = view->xdg_toplevel->base->surface->current.width,
-			.height = view->xdg_toplevel->base->surface->current.height,
+			.width = view->xdg_toplevel->current.width,
+			.height = view->xdg_toplevel->current.height,
 		};
 		render_view_border(server->render_pass, output, view, box, 0);
 		struct render_data rdata = {
@@ -345,8 +345,8 @@ static void output_frame(struct wl_listener *listener, void *data) {
 		struct wlr_box box = {
 			.x = server->cursor->x - server->interactive.sx,
 			.y = server->cursor->y - server->interactive.sy,
-			.width = view->xdg_toplevel->base->surface->current.width,
-			.height = view->xdg_toplevel->base->surface->current.height,
+			.width = view->xdg_toplevel->current.width,
+			.height = view->xdg_toplevel->current.height,
 		};
 		render_view_border(server->render_pass, output, view, box, 1);
 		// NOTE(rubo): this does not happen in Plan 9's rio
