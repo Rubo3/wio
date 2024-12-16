@@ -314,8 +314,7 @@ static void output_frame(struct wl_listener *listener, void *data) {
 
 	struct wio_view *view;
 	wl_list_for_each_reverse(view, &server->views, link) {
-		if (!view->xdg_toplevel->base->surface->mapped
-		||   view == server->interactive.view) {
+		if (!view->xdg_toplevel->base->surface->mapped) {
 			continue;
 		}
 		struct wlr_box box = {
@@ -349,17 +348,6 @@ static void output_frame(struct wl_listener *listener, void *data) {
 			.height = view->xdg_toplevel->current.height,
 		};
 		render_view_border(server->render_pass, output, view, box, 1);
-		// NOTE(rubo): this does not happen in Plan 9's rio
-		view->x = box.x;
-		view->y = box.y;
-		struct render_data rdata = {
-			.output = wlr_output,
-			.view = view,
-			.render_pass = server->render_pass,
-			.when = &now,
-		};
-		wlr_xdg_surface_for_each_surface(view->xdg_toplevel->base,
-				render_surface, &rdata);
 		break;
 	case INPUT_STATE_NEW_END:
 	case INPUT_STATE_RESIZE_END:
