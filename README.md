@@ -2,7 +2,7 @@ _Note_: this repository contains the wio
 [source code](https://git.sr.ht/~sircmpwn/wio) by Drew DeVault, with some of
 the [patches](https://lists.sr.ht/~sircmpwn/wio/patches) which were not
 mainlined, and some changes to make it compile against the latest version of
-[wlroots](https://gitlab.freedesktop.org/wlroots/wlroots) (currently: 0.18.1).
+[wlroots](https://gitlab.freedesktop.org/wlroots/wlroots) (currently: 0.18.2).
 
 It is available on the Arch User Repository as
 [`wio-wl`](https://aur.archlinux.org/packages/wio-wl).
